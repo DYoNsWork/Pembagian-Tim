@@ -2,7 +2,7 @@
 <html lang="id" class="theme-dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0b1210" />
     <title>Pembagian Grup Permainan</title>
@@ -15,7 +15,46 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <div class="app">
+    <div class="auth-screen" id="auth-screen">
+      <form id="setup-form" class="auth-card hidden">
+        <span class="brand-mark" aria-hidden="true">PG</span>
+        <p class="eyebrow">Pengundian peserta</p>
+        <h1>Buat admin pertama</h1>
+        <p class="hint">Akun ini bisa menambah pengguna lain dan mengatur hak akses.</p>
+        <label>
+          Nama tampilan
+          <input id="setup-name" type="text" maxlength="80" required placeholder="Nama lengkap" />
+        </label>
+        <label>
+          Username
+          <input id="setup-username" type="text" maxlength="32" required autocomplete="username" placeholder="admin" />
+        </label>
+        <label>
+          Kata sandi
+          <input id="setup-password" type="password" minlength="6" required autocomplete="new-password" />
+        </label>
+        <button type="submit" class="primary">Simpan dan masuk</button>
+        <p class="error hidden" id="setup-error"></p>
+      </form>
+      <form id="login-form" class="auth-card hidden">
+        <span class="brand-mark" aria-hidden="true">PG</span>
+        <p class="eyebrow">Pengundian peserta</p>
+        <h1>Masuk</h1>
+        <p class="hint">Gunakan akun yang sudah diberi hak akses.</p>
+        <label>
+          Username
+          <input id="login-username" type="text" required autocomplete="username" />
+        </label>
+        <label>
+          Kata sandi
+          <input id="login-password" type="password" required autocomplete="current-password" />
+        </label>
+        <button type="submit" class="primary">Masuk</button>
+        <p class="error hidden" id="login-error"></p>
+      </form>
+    </div>
+
+    <div class="app hidden" id="app-shell">
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
           <span class="brand-mark" aria-hidden="true">PG</span>
@@ -41,7 +80,15 @@
             <span class="nav-index">04</span>
             <span>Hasil</span>
           </button>
+          <button type="button" class="nav-item hidden" data-view="pengguna">
+            <span class="nav-index">05</span>
+            <span>Pengguna</span>
+          </button>
         </nav>
+        <div class="sidebar-user">
+          <p class="user-chip" id="sidebar-user">—</p>
+          <button type="button" class="secondary logout-btn">Keluar</button>
+        </div>
         <p class="cloud-status" id="cloud-status">Menghubungkan ke Cloudflare D1…</p>
         <button type="button" class="danger hidden" id="clear-cloud">Hapus data cloud</button>
       </aside>
@@ -49,10 +96,13 @@
 
       <div class="page">
         <header class="topbar">
-          <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Buka menu">Menu</button>
           <div>
             <p class="eyebrow" id="view-eyebrow">Peserta</p>
             <h1 id="view-title">Data peserta</h1>
+          </div>
+          <div class="topbar-user">
+            <span class="user-chip" id="topbar-user">—</span>
+            <button type="button" class="text-btn logout-btn">Keluar</button>
           </div>
         </header>
 
@@ -232,16 +282,83 @@
             </section>
             <p class="empty-games" id="result-empty">Belum ada hasil pembagian. Bagi grup di menu <strong>Pembagian</strong> untuk melihat daftar grup dan bagan gugur.</p>
           </section>
+
+          <section class="view hidden" id="view-pengguna">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Pengguna dan hak akses</h2>
+                <button type="button" class="secondary" id="add-user">Tambah pengguna</button>
+              </div>
+              <p class="hint">
+                Setiap akun mendapat peran dan hak akses menu. Admin bisa mengatur semua.
+                Panitia mengelola undian. Penonton hanya melihat hasil.
+              </p>
+              <div class="user-list" id="user-list"></div>
+              <form id="user-editor" class="user-editor hidden">
+                <input id="user-edit-id" type="hidden" />
+                <label>
+                  Nama tampilan
+                  <input id="user-display-name" type="text" maxlength="80" required />
+                </label>
+                <label>
+                  Username
+                  <input id="user-username" type="text" maxlength="32" required />
+                </label>
+                <label>
+                  Kata sandi
+                  <input id="user-password" type="password" minlength="6" placeholder="Kosongkan jika tidak diubah" />
+                </label>
+                <label>
+                  Peran
+                  <select id="user-role">
+                    <option value="admin">Admin</option>
+                    <option value="panitia">Panitia</option>
+                    <option value="penonton">Penonton</option>
+                    <option value="kustom">Kustom</option>
+                  </select>
+                </label>
+                <fieldset class="rights-fieldset" id="user-rights">
+                  <legend>Hak akses</legend>
+                </fieldset>
+                <div class="game-editor-actions">
+                  <button type="submit" class="primary">Simpan pengguna</button>
+                  <button type="button" class="secondary" id="user-cancel">Batal</button>
+                </div>
+                <p class="error hidden" id="user-error"></p>
+              </form>
+            </section>
+          </section>
         </main>
 
         <footer>
           <p>
-            Gunakan menu di samping untuk pindah halaman. Definisikan permainan termasuk
-            grup per sesi, pilih campur atau satu jenis kelamin, lalu bagi grup secara
-            acak. Hasil undian dilengkapi bagan sistem gugur.
+            Di HP, pakai menu bawah. Di komputer, pakai menu samping. Masuk dengan akun
+            yang punya hak akses, lalu unggah peserta, atur permainan, dan bagi grup.
           </p>
         </footer>
       </div>
+      <nav class="bottom-nav" id="bottom-nav" aria-label="Menu bawah">
+        <button type="button" class="bottom-nav-item is-active" data-view="peserta">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5Z"/></svg>
+          <span>Peserta</span>
+        </button>
+        <button type="button" class="bottom-nav-item" data-view="permainan">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 9 8H3l5 4-2 8 6-4 6 4-2-8 5-4h-6Z"/></svg>
+          <span>Main</span>
+        </button>
+        <button type="button" class="bottom-nav-item" data-view="pembagian">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 4v2H4v4h2V8h4v2l3-3-3-3Zm4 10 3 3-3 3v-2H8v-2h6Zm7-5-3-3v2h-4v2h4v2Z"/></svg>
+          <span>Bagi</span>
+        </button>
+        <button type="button" class="bottom-nav-item" data-view="hasil">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 4h6v7H5Zm8 0h6v4h-6Zm0 6h6v10h-6ZM5 13h6v7H5Z"/></svg>
+          <span>Hasil</span>
+        </button>
+        <button type="button" class="bottom-nav-item hidden" data-view="pengguna">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3ZM8 13c-3.3 0-6 1.7-6 3.5V18h8v-1.5C10 14.7 8.7 13 8 13Zm8 0c-.3 0-.7 0-1 .1 1.2.8 2 2 2 3.4V18h7v-1.5c0-1.8-2.7-3.5-6-3.5Z"/></svg>
+          <span>User</span>
+        </button>
+      </nav>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

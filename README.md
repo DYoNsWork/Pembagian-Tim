@@ -2,7 +2,9 @@
 
 Aplikasi web untuk membagi peserta ke dalam **grup permainan** secara acak. Data diunggah dari file CSV berisi **nama**, **jenis kelamin**, dan **nama cabang**. Cabang hanya ditampilkan; pengacakan tidak mengelompokkan berdasarkan cabang.
 
-Pilih atau **buat sendiri** jenis permainan. Katalog mulai **kosong**. Bagi grup dengan komposisi **campur** (acak murni dari semua peserta), **laki-laki saja**, atau **perempuan saja**. Menu samping memindahkan halaman Peserta, Permainan, Pembagian, dan Hasil.
+Pilih atau **buat sendiri** jenis permainan. Katalog mulai **kosong**. Bagi grup dengan komposisi **campur** (acak murni dari semua peserta), **laki-laki saja**, atau **perempuan saja**. Di HP, menu ada di **bawah layar**.
+
+Masuk dengan akun. Admin bisa **tambah pengguna** dan memberi hak akses per menu: Peserta, Permainan, Pembagian, Hasil, atau Pengguna.
 
 Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disimpan di **Cloudflare D1**.
 
@@ -28,7 +30,9 @@ Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disi
 
 5. Hasil undian ada di menu **Hasil**, satu per permainan: daftar grup plus **bagan sistem gugur**. Klik grup pemenang di setiap sesi agar maju ke babak berikutnya. Bisa diganti dengan acak ulang, diunduh CSV, atau dicetak.
 
-Gunakan **menu samping** untuk pindah halaman: Peserta, Permainan, Pembagian, dan Hasil.
+Gunakan **menu samping** di komputer, atau **menu bawah** di HP: Peserta, Permainan, Pembagian, Hasil, dan Pengguna (jika punya hak).
+
+Saat pertama kali dibuka, buat akun **admin**. Admin lalu menambah panitia atau penonton dan memilih hak aksesnya.
 
 File contoh: `public/contoh-peserta.csv` (72 peserta).
 

@@ -8,6 +8,17 @@ import {
   normalizeGame,
 } from "../src/games.js";
 import { buildKnockoutBracket, parseBracket, setMatchWinner } from "../src/bracket.js";
+import {
+  createUser,
+  deleteUser,
+  ensureUserSchema,
+  getSessionUser,
+  handleAuth,
+  listUsers,
+  requireAnyRight,
+  requireRight,
+  updateUser,
+} from "./auth.js";
 
 const SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS participants (id INTEGER PRIMARY KEY AUTOINCREMENT, nama TEXT NOT NULL, jenis_kelamin TEXT NOT NULL, cabang TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
@@ -33,6 +44,7 @@ export default {
       await ensureDrawGameColumns(env);
       await ensureGameSchema(env);
       await ensureOneDrawPerGame(env);
+      await ensureUserSchema(env);
       return await handleApi(request, env, url);
     } catch (error) {
       const status = Number(error.status) || 500;
@@ -45,16 +57,47 @@ export default {
 async function handleApi(request, env, url) {
   const path = url.pathname.replace(/\/$/, "") || "/";
 
+  const authResponse = await handleAuth(request, env, path);
+  if (authResponse) return authResponse;
+
+  const user = await getSessionUser(request, env);
+
+  if (path === "/api/users" && request.method === "GET") {
+    requireRight(user, "pengguna");
+    return json(await listUsers(env));
+  }
+
+  if (path === "/api/users" && request.method === "POST") {
+    requireRight(user, "pengguna");
+    const body = await readJson(request);
+    return json(await createUser(env, body), 201);
+  }
+
+  const userMatch = path.match(/^\/api\/users\/(\d+)$/);
+  if (userMatch && request.method === "PUT") {
+    requireRight(user, "pengguna");
+    const body = await readJson(request);
+    return json(await updateUser(env, Number(userMatch[1]), body, user));
+  }
+
+  if (userMatch && request.method === "DELETE") {
+    requireRight(user, "pengguna");
+    return json(await deleteUser(env, Number(userMatch[1]), user));
+  }
+
   if (path === "/api/participants" && request.method === "GET") {
+    requireRight(user, "peserta");
     return json(await listParticipants(env));
   }
 
   if (path === "/api/participants" && request.method === "PUT") {
+    requireRight(user, "peserta");
     const body = await readJson(request);
     return json(await saveParticipants(env, body), 201);
   }
 
   if (path === "/api/participants" && request.method === "DELETE") {
+    requireRight(user, "peserta");
     await env.DB.batch([
       env.DB.prepare("DELETE FROM draw_members"),
       env.DB.prepare("DELETE FROM draws"),
@@ -65,41 +108,49 @@ async function handleApi(request, env, url) {
   }
 
   if (path === "/api/games" && request.method === "GET") {
+    requireAnyRight(user, ["permainan", "pembagian", "hasil"]);
     return json({ games: await listGames(env) });
   }
 
   if (path === "/api/games" && request.method === "POST") {
+    requireRight(user, "permainan");
     const body = await readJson(request);
     return json(await createGame(env, body), 201);
   }
 
   const gameMatch = path.match(/^\/api\/games\/([^/]+)$/);
   if (gameMatch && request.method === "PUT") {
+    requireRight(user, "permainan");
     const body = await readJson(request);
     return json(await updateGame(env, decodeURIComponent(gameMatch[1]), body));
   }
 
   if (gameMatch && request.method === "DELETE") {
+    requireRight(user, "permainan");
     return json(await deleteGame(env, decodeURIComponent(gameMatch[1])));
   }
 
   if (path === "/api/draws" && request.method === "GET") {
+    requireAnyRight(user, ["pembagian", "hasil"]);
     return json(await listDraws(env));
   }
 
   if (path === "/api/draws" && request.method === "POST") {
+    requireRight(user, "pembagian");
     const body = await readJson(request);
     return json(await createDraw(env, body), 201);
   }
 
   const drawMatch = path.match(/^\/api\/draws\/(\d+)$/);
   if (drawMatch && request.method === "GET") {
+    requireAnyRight(user, ["pembagian", "hasil"]);
     const draw = await getDraw(env, Number(drawMatch[1]));
     if (!draw) return json({ error: "Hasil undian tidak ditemukan." }, 404);
     return json(draw);
   }
 
   if (drawMatch && request.method === "PUT") {
+    requireRight(user, "hasil");
     const body = await readJson(request);
     return json(await updateDrawBracket(env, Number(drawMatch[1]), body));
   }
