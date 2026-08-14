@@ -1,4 +1,4 @@
-import { divideTeams } from "../src/teams.js";
+import { divideTeams, normalizeGenderMode } from "../src/teams.js";
 import { chunk, groupDrawMembers, personFromRow } from "../src/draws.js";
 import {
   gameFromRow,
@@ -157,7 +157,7 @@ async function saveParticipants(env, body) {
 
 async function listDraws(env) {
   const { results } = await env.DB.prepare(
-    "SELECT id, team_count, members_per_team, created_at, game_id, game_name FROM draws ORDER BY id DESC LIMIT 20",
+    "SELECT id, team_count, members_per_team, created_at, game_id, game_name, gender_mode FROM draws ORDER BY id DESC LIMIT 20",
   ).all();
 
   return {
@@ -167,6 +167,7 @@ async function listDraws(env) {
       membersPerTeam: row.members_per_team,
       gameId: row.game_id || "",
       gameName: row.game_name || "Permainan",
+      genderMode: normalizeGenderMode(row.gender_mode),
       createdAt: row.created_at,
     })),
   };
@@ -257,7 +258,7 @@ async function createDraw(env, body) {
   }
   const teamCount = Number(body?.teamCount) || game.teamCount;
   const membersPerTeam = Number(body?.membersPerTeam) || game.members;
-  const balanceGender = Boolean(body?.balanceGender);
+  const genderMode = normalizeGenderMode(body?.genderMode);
   const stored = await listParticipants(env);
   let result;
   try {
@@ -265,16 +266,16 @@ async function createDraw(env, body) {
       teamCount,
       membersPerTeam,
       gameName: game.labelPrefix,
-      balanceGender,
+      genderMode,
     });
   } catch (error) {
     throw Object.assign(error, { status: 400 });
   }
 
   const drawInsert = await env.DB.prepare(
-    "INSERT INTO draws (team_count, members_per_team, game_id, game_name) VALUES (?, ?, ?, ?) RETURNING id, created_at",
+    "INSERT INTO draws (team_count, members_per_team, game_id, game_name, gender_mode) VALUES (?, ?, ?, ?, ?) RETURNING id, created_at",
   )
-    .bind(teamCount, membersPerTeam, game.id, game.name)
+    .bind(teamCount, membersPerTeam, game.id, game.name, genderMode)
     .first();
 
   const memberStmt = env.DB.prepare(
@@ -323,14 +324,14 @@ async function createDraw(env, body) {
     membersPerTeam,
     gameId: game.id,
     gameName: game.name,
-    balanceGender,
+    genderMode,
     ...result,
   };
 }
 
 async function getDraw(env, id) {
   const draw = await env.DB.prepare(
-    "SELECT id, team_count, members_per_team, created_at, game_id, game_name FROM draws WHERE id = ?",
+    "SELECT id, team_count, members_per_team, created_at, game_id, game_name, gender_mode FROM draws WHERE id = ?",
   )
     .bind(id)
     .first();
@@ -351,6 +352,7 @@ async function getDraw(env, id) {
     membersPerTeam: draw.members_per_team,
     gameId: draw.game_id || "",
     gameName: draw.game_name || "Permainan",
+    genderMode: normalizeGenderMode(draw.gender_mode),
     needed: draw.team_count * draw.members_per_team,
     ...grouped,
   };
@@ -383,6 +385,9 @@ async function ensureDrawGameColumns(env) {
   }
   if (!columns.has("game_name")) {
     await env.DB.prepare("ALTER TABLE draws ADD COLUMN game_name TEXT").run();
+  }
+  if (!columns.has("gender_mode")) {
+    await env.DB.prepare("ALTER TABLE draws ADD COLUMN gender_mode TEXT").run();
   }
 }
 

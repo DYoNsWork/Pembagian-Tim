@@ -7,13 +7,43 @@ export function shuffle(items, random = Math.random) {
   return result;
 }
 
+export const GENDER_MODES = [
+  { id: "campur", label: "Campur", gender: null },
+  { id: "laki-laki", label: "Laki-laki saja", gender: "Laki-laki" },
+  { id: "perempuan", label: "Perempuan saja", gender: "Perempuan" },
+];
+
+export function normalizeGenderMode(value) {
+  const id = String(value || "campur").trim().toLowerCase();
+  if (id === "laki-laki" || id === "laki" || id === "pria") return "laki-laki";
+  if (id === "perempuan" || id === "wanita") return "perempuan";
+  return "campur";
+}
+
+export function genderModeLabel(value) {
+  const mode = normalizeGenderMode(value);
+  return GENDER_MODES.find((item) => item.id === mode)?.label || "Campur";
+}
+
+export function filterByGender(participants, genderMode) {
+  const mode = normalizeGenderMode(genderMode);
+  if (mode === "laki-laki") {
+    return participants.filter((person) => person.jenisKelamin === "Laki-laki");
+  }
+  if (mode === "perempuan") {
+    return participants.filter((person) => person.jenisKelamin === "Perempuan");
+  }
+  return participants;
+}
+
 export function divideTeams(
   participants,
-  { teamCount, membersPerTeam, gameName = "Tim", balanceGender = false },
+  { teamCount, membersPerTeam, gameName = "Tim", genderMode = "campur" },
   random = Math.random,
 ) {
   const teamsWanted = Number(teamCount);
   const size = Number(membersPerTeam);
+  const mode = normalizeGenderMode(genderMode);
 
   if (!Number.isInteger(teamsWanted) || teamsWanted < 1) {
     throw new Error("Jumlah tim harus bilangan bulat minimal 1.");
@@ -22,19 +52,27 @@ export function divideTeams(
     throw new Error("Anggota per tim harus bilangan bulat minimal 1.");
   }
 
+  const pool = filterByGender(participants, mode);
   const needed = teamsWanted * size;
-  if (participants.length < needed) {
+  if (pool.length < needed) {
+    const who =
+      mode === "laki-laki"
+        ? "Peserta laki-laki"
+        : mode === "perempuan"
+          ? "Peserta perempuan"
+          : "Peserta";
     throw new Error(
-      `Peserta tidak cukup. Butuh ${needed} orang (${teamsWanted} grup × ${size} anggota), tersedia ${participants.length}.`,
+      `${who} tidak cukup. Butuh ${needed} orang (${teamsWanted} grup × ${size} anggota), tersedia ${pool.length}.`,
     );
   }
 
   const prefix = String(gameName || "Tim").trim() || "Tim";
-  const selected = balanceGender
-    ? pickBalanced(participants, teamsWanted, size, random)
-    : shuffle(participants, random).slice(0, needed);
+  const selected =
+    mode === "campur"
+      ? pickBalanced(pool, teamsWanted, size, random)
+      : shuffle(pool, random).slice(0, needed);
   const selectedSet = new Set(selected);
-  const leftover = participants.filter((person) => !selectedSet.has(person));
+  const leftover = pool.filter((person) => !selectedSet.has(person));
 
   const teams = [];
   for (let i = 0; i < teamsWanted; i += 1) {
@@ -51,7 +89,9 @@ export function divideTeams(
     needed,
     used: selected.length,
     total: participants.length,
+    poolSize: pool.length,
     gameName: prefix,
+    genderMode: mode,
   };
 }
 

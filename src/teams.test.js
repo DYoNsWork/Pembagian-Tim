@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { divideTeams, shuffle, teamsToCsv } from "./teams.js";
+import {
+  divideTeams,
+  filterByGender,
+  genderModeLabel,
+  normalizeGenderMode,
+  shuffle,
+  teamsToCsv,
+} from "./teams.js";
 
 function people(n) {
   return Array.from({ length: n }, (_, i) => ({
@@ -74,11 +81,11 @@ describe("divideTeams", () => {
     expect(result.teams.map((team) => team.name)).toEqual(["Tim Futsal 1", "Tim Futsal 2"]);
   });
 
-  it("menyeimbangkan jenis kelamin antar grup", () => {
+  it("menyeimbangkan jenis kelamin antar grup jika campur", () => {
     const result = divideTeams(people(8), {
       teamCount: 2,
       membersPerTeam: 4,
-      balanceGender: true,
+      genderMode: "campur",
     });
     for (const team of result.teams) {
       const laki = team.members.filter((m) => m.jenisKelamin === "Laki-laki").length;
@@ -86,6 +93,55 @@ describe("divideTeams", () => {
       expect(laki).toBe(2);
       expect(perempuan).toBe(2);
     }
+  });
+
+  it("hanya memakai peserta laki-laki", () => {
+    const result = divideTeams(people(16), {
+      teamCount: 2,
+      membersPerTeam: 3,
+      genderMode: "laki-laki",
+    });
+    expect(result.teams.flatMap((team) => team.members).every((m) => m.jenisKelamin === "Laki-laki")).toBe(
+      true,
+    );
+    expect(result.leftover.every((m) => m.jenisKelamin === "Laki-laki")).toBe(true);
+    expect(result.leftover).toHaveLength(2);
+    expect(result.poolSize).toBe(8);
+    expect(result.genderMode).toBe("laki-laki");
+  });
+
+  it("hanya memakai peserta perempuan", () => {
+    const result = divideTeams(people(12), {
+      teamCount: 2,
+      membersPerTeam: 3,
+      genderMode: "perempuan",
+    });
+    expect(
+      result.teams.flatMap((team) => team.members).every((m) => m.jenisKelamin === "Perempuan"),
+    ).toBe(true);
+  });
+
+  it("gagal jika peserta laki-laki kurang", () => {
+    expect(() =>
+      divideTeams(people(8), { teamCount: 3, membersPerTeam: 4, genderMode: "laki-laki" }),
+    ).toThrow(/laki-laki tidak cukup/i);
+  });
+});
+
+describe("normalizeGenderMode", () => {
+  it("menyeragamkan pilihan komposisi", () => {
+    expect(normalizeGenderMode("Campur")).toBe("campur");
+    expect(normalizeGenderMode("laki")).toBe("laki-laki");
+    expect(normalizeGenderMode("wanita")).toBe("perempuan");
+    expect(genderModeLabel("laki-laki")).toBe("Laki-laki saja");
+  });
+});
+
+describe("filterByGender", () => {
+  it("menyaring peserta sesuai mode", () => {
+    expect(filterByGender(people(10), "laki-laki")).toHaveLength(5);
+    expect(filterByGender(people(10), "perempuan")).toHaveLength(5);
+    expect(filterByGender(people(10), "campur")).toHaveLength(10);
   });
 });
 

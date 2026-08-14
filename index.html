@@ -13,149 +13,195 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <div class="page">
-      <header class="hero">
-        <p class="eyebrow">Pengundian peserta</p>
-        <h1>Pembagian Grup Permainan</h1>
-        <p class="lede">
-          Unggah daftar peserta dari CSV, lalu definisikan permainan: nama, penjelasan,
-          jumlah grup, dan peserta per grup. Sistem mengacak nama tanpa membedakan
-          cabang. Data disimpan di Cloudflare D1.
-        </p>
+    <div class="app">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+          <p class="eyebrow">Pengundian peserta</p>
+          <strong>Pembagian Grup</strong>
+        </div>
+        <nav class="side-nav" id="side-nav" aria-label="Menu utama">
+          <button type="button" class="nav-item is-active" data-view="peserta">Peserta</button>
+          <button type="button" class="nav-item" data-view="permainan">Permainan</button>
+          <button type="button" class="nav-item" data-view="pembagian">Pembagian</button>
+          <button type="button" class="nav-item" data-view="hasil">Hasil</button>
+        </nav>
         <p class="cloud-status" id="cloud-status">Menghubungkan ke Cloudflare D1…</p>
-      </header>
+        <button type="button" class="danger hidden" id="clear-cloud">Hapus data cloud</button>
+      </aside>
+      <div class="nav-backdrop hidden" id="nav-backdrop"></div>
 
-      <main>
-        <section class="panel" id="upload-panel">
-          <div class="panel-head">
-            <h2>1. Unggah data peserta</h2>
-            <a class="ghost-link" href="./contoh-peserta.csv" download>Unduh contoh CSV</a>
+      <div class="page">
+        <header class="topbar">
+          <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Buka menu">Menu</button>
+          <div>
+            <p class="eyebrow" id="view-eyebrow">Peserta</p>
+            <h1 id="view-title">Data peserta</h1>
           </div>
-          <label class="dropzone" id="dropzone" for="file-input">
-            <input id="file-input" type="file" accept=".csv,text/csv" hidden />
-            <span class="dropzone-mark">CSV</span>
-            <span>
-              <strong>Seret file ke sini</strong> atau klik untuk memilih.
-              Kolom yang diperlukan: <code>nama, jenis kelamin, nama cabang</code>
-            </span>
-          </label>
-          <div class="upload-actions">
-            <p class="hint" id="file-status">Belum ada file yang diunggah. Data akan disimpan ke Cloudflare D1.</p>
-            <button type="button" class="danger hidden" id="clear-cloud">Hapus data cloud</button>
-          </div>
-        </section>
+        </header>
 
-        <section class="panel hidden" id="data-panel">
-          <div class="panel-head">
-            <h2>2. Data peserta</h2>
-            <p class="muted" id="file-name"></p>
-          </div>
-          <div class="stats" id="stats"></div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Nama</th>
-                  <th>Jenis kelamin</th>
-                  <th>Nama cabang</th>
-                </tr>
-              </thead>
-              <tbody id="participant-rows"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="panel" id="config-panel">
-          <div class="panel-head">
-            <h2>3. Kelola permainan dan atur grup</h2>
-          </div>
-          <fieldset class="game-fieldset">
-            <legend>Jenis permainan</legend>
-            <p class="hint">
-              Katalog mulai kosong. Tambah permainan dengan nama, penjelasan, jumlah
-              grup, dan jumlah peserta per grup.
-            </p>
-            <div class="game-toolbar">
-              <button type="button" class="secondary" id="add-game">Tambah permainan</button>
-            </div>
-            <p class="empty-games" id="games-empty">Belum ada permainan. Klik <strong>Tambah permainan</strong> untuk mulai.</p>
-            <div class="game-grid hidden" id="game-grid" role="radiogroup" aria-label="Jenis permainan"></div>
-            <form id="game-editor" class="game-editor hidden">
-              <input id="game-edit-id" type="hidden" />
-              <label class="game-editor-wide">
-                Nama permainan
-                <input id="game-name" type="text" maxlength="80" required placeholder="Contoh: Gobak sodor" />
-              </label>
-              <label class="game-editor-wide">
-                Penjelasan
-                <textarea id="game-description" maxlength="500" rows="3" placeholder="Tuliskan aturan atau keterangan permainan"></textarea>
-              </label>
-              <label>
-                Jumlah grup
-                <input id="game-team-count" type="number" min="1" max="200" step="1" required placeholder="16" />
-              </label>
-              <label>
-                Peserta per grup
-                <input id="game-members" type="number" min="1" max="99" step="1" required placeholder="4" />
-              </label>
-              <div class="game-editor-actions">
-                <button type="submit" class="primary">Simpan permainan</button>
-                <button type="button" class="secondary" id="game-cancel">Batal</button>
+        <main>
+          <section class="view" id="view-peserta">
+            <section class="panel" id="upload-panel">
+              <div class="panel-head">
+                <h2>Unggah data peserta</h2>
+                <a class="ghost-link" href="./contoh-peserta.csv" download>Unduh contoh CSV</a>
               </div>
-              <p class="error hidden" id="game-error"></p>
-            </form>
-          </fieldset>
-          <form id="config-form" class="draw-settings hidden">
-            <div class="config-grid">
-              <label>
-                Jumlah grup
-                <input id="team-count" type="number" min="1" step="1" value="16" required />
+              <label class="dropzone" id="dropzone" for="file-input">
+                <input id="file-input" type="file" accept=".csv,text/csv" hidden />
+                <span class="dropzone-mark">CSV</span>
+                <span>
+                  <strong>Seret file ke sini</strong> atau klik untuk memilih.
+                  Kolom yang diperlukan: <code>nama, jenis kelamin, nama cabang</code>
+                </span>
               </label>
-              <label>
-                Anggota per grup
-                <input id="members-per-team" type="number" min="1" step="1" value="4" required />
-              </label>
-              <div class="need-box" id="need-box">
-                Kebutuhan: <strong>64 orang</strong>
+              <p class="hint" id="file-status">Belum ada file yang diunggah. Data akan disimpan ke Cloudflare D1.</p>
+            </section>
+
+            <section class="panel hidden" id="data-panel">
+              <div class="panel-head">
+                <h2>Daftar peserta</h2>
+                <p class="muted" id="file-name"></p>
               </div>
-            </div>
-            <label class="check-row">
-              <input id="balance-gender" type="checkbox" />
-              <span>Seimbangkan laki-laki dan perempuan di tiap grup</span>
-            </label>
-            <button type="submit" class="primary">Bagi grup permainan secara acak</button>
-            <p class="hint">
-              Pengacakan tidak melihat cabang. Jika peserta lebih banyak dari kebutuhan,
-              sisanya masuk daftar cadangan.
-            </p>
-            <p class="error hidden" id="config-error"></p>
-          </form>
-        </section>
+              <div class="stats" id="stats"></div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Nama</th>
+                      <th>Jenis kelamin</th>
+                      <th>Nama cabang</th>
+                    </tr>
+                  </thead>
+                  <tbody id="participant-rows"></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
 
-        <section class="panel hidden" id="result-panel">
-          <div class="panel-head">
-            <h2>4. Grup permainan</h2>
-            <div class="actions">
-              <select id="draw-history" class="hidden" aria-label="Undian tersimpan"></select>
-              <button type="button" class="secondary" id="reshuffle">Acak ulang</button>
-              <button type="button" class="secondary" id="export-csv">Unduh hasil CSV</button>
-              <button type="button" class="secondary" id="print-result">Cetak</button>
-            </div>
-          </div>
-          <p class="result-meta" id="result-meta"></p>
-          <div class="teams" id="teams"></div>
-          <div class="leftover hidden" id="leftover"></div>
-        </section>
-      </main>
+          <section class="view hidden" id="view-permainan">
+            <section class="panel" id="config-panel">
+              <div class="panel-head">
+                <h2>Jenis permainan</h2>
+              </div>
+              <fieldset class="game-fieldset">
+                <p class="hint">
+                  Katalog mulai kosong. Tambah permainan dengan nama, penjelasan, jumlah
+                  grup, dan jumlah peserta per grup.
+                </p>
+                <div class="game-toolbar">
+                  <button type="button" class="secondary" id="add-game">Tambah permainan</button>
+                </div>
+                <p class="empty-games" id="games-empty">Belum ada permainan. Klik <strong>Tambah permainan</strong> untuk mulai.</p>
+                <div class="game-grid hidden" id="game-grid" role="radiogroup" aria-label="Jenis permainan"></div>
+                <form id="game-editor" class="game-editor hidden">
+                  <input id="game-edit-id" type="hidden" />
+                  <label class="game-editor-wide">
+                    Nama permainan
+                    <input id="game-name" type="text" maxlength="80" required placeholder="Contoh: Gobak sodor" />
+                  </label>
+                  <label class="game-editor-wide">
+                    Penjelasan
+                    <textarea id="game-description" maxlength="500" rows="3" placeholder="Tuliskan aturan atau keterangan permainan"></textarea>
+                  </label>
+                  <label>
+                    Jumlah grup
+                    <input id="game-team-count" type="number" min="1" max="200" step="1" required placeholder="16" />
+                  </label>
+                  <label>
+                    Peserta per grup
+                    <input id="game-members" type="number" min="1" max="99" step="1" required placeholder="4" />
+                  </label>
+                  <div class="game-editor-actions">
+                    <button type="submit" class="primary">Simpan permainan</button>
+                    <button type="button" class="secondary" id="game-cancel">Batal</button>
+                  </div>
+                  <p class="error hidden" id="game-error"></p>
+                </form>
+              </fieldset>
+            </section>
+          </section>
 
-      <footer>
-        <p>
-          Grup dipakai untuk pertandingan. Definisikan sendiri jenis permainan (nama,
-          penjelasan, jumlah grup, peserta per grup). Pembagian bersifat acak; cabang
-          hanya ditampilkan. Data disimpan di Cloudflare D1.
-        </p>
-      </footer>
+          <section class="view hidden" id="view-pembagian">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Bagi grup</h2>
+              </div>
+              <p class="empty-games hidden" id="draw-empty">
+                Unggah peserta dan tambah permainan dulu, lalu kembali ke menu Pembagian.
+              </p>
+              <form id="config-form" class="draw-settings hidden">
+                <p class="hint" id="selected-game-label">Pilih permainan di menu Permainan.</p>
+                <fieldset class="gender-fieldset">
+                  <legend>Komposisi grup</legend>
+                  <div class="gender-modes" id="gender-modes" role="radiogroup" aria-label="Komposisi grup">
+                    <label class="gender-mode is-selected">
+                      <input type="radio" name="gender-mode" value="campur" checked />
+                      <span>Campur</span>
+                      <small id="count-campur">0 peserta</small>
+                    </label>
+                    <label class="gender-mode">
+                      <input type="radio" name="gender-mode" value="laki-laki" />
+                      <span>Laki-laki</span>
+                      <small id="count-laki">0 orang</small>
+                    </label>
+                    <label class="gender-mode">
+                      <input type="radio" name="gender-mode" value="perempuan" />
+                      <span>Perempuan</span>
+                      <small id="count-perempuan">0 orang</small>
+                    </label>
+                  </div>
+                </fieldset>
+                <div class="config-grid">
+                  <label>
+                    Jumlah grup
+                    <input id="team-count" type="number" min="1" step="1" value="16" required />
+                  </label>
+                  <label>
+                    Anggota per grup
+                    <input id="members-per-team" type="number" min="1" step="1" value="4" required />
+                  </label>
+                  <div class="need-box" id="need-box">
+                    Kebutuhan: <strong>64 orang</strong>
+                  </div>
+                </div>
+                <button type="submit" class="primary">Bagi grup permainan secara acak</button>
+                <p class="hint">
+                  Campur menyeimbangkan laki-laki dan perempuan di tiap grup. Mode
+                  laki-laki atau perempuan hanya memakai peserta sesuai pilihan.
+                  Pengacakan tidak melihat cabang.
+                </p>
+                <p class="error hidden" id="config-error"></p>
+              </form>
+            </section>
+          </section>
+
+          <section class="view hidden" id="view-hasil">
+            <section class="panel hidden" id="result-panel">
+              <div class="panel-head">
+                <h2>Grup permainan</h2>
+                <div class="actions">
+                  <select id="draw-history" class="hidden" aria-label="Undian tersimpan"></select>
+                  <button type="button" class="secondary" id="reshuffle">Acak ulang</button>
+                  <button type="button" class="secondary" id="export-csv">Unduh hasil CSV</button>
+                  <button type="button" class="secondary" id="print-result">Cetak</button>
+                </div>
+              </div>
+              <p class="result-meta" id="result-meta"></p>
+              <div class="teams" id="teams"></div>
+              <div class="leftover hidden" id="leftover"></div>
+            </section>
+            <p class="empty-games" id="result-empty">Belum ada hasil pembagian. Bagi grup di menu Pembagian.</p>
+          </section>
+        </main>
+
+        <footer>
+          <p>
+            Gunakan menu di samping untuk pindah halaman. Definisikan permainan, pilih
+            campur atau satu jenis kelamin, lalu bagi grup secara acak.
+          </p>
+        </footer>
+      </div>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>
