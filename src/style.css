@@ -68,6 +68,58 @@ h1 {
   margin: 0;
 }
 
+.cloud-status {
+  display: inline-block;
+  margin: 16px 0 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #dceee4;
+  color: var(--green-dark);
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.cloud-status[data-kind="warn"] {
+  background: #f3e0d6;
+  color: var(--danger);
+}
+
+.cloud-status[data-kind="muted"] {
+  background: #efe6d4;
+  color: var(--muted);
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.upload-actions .hint {
+  margin: 0;
+}
+
+.danger {
+  height: 40px;
+  border-radius: 12px;
+  padding: 0 14px;
+  font-weight: 700;
+  background: #f3e0d6;
+  color: var(--danger);
+}
+
+select {
+  height: 46px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 0 12px;
+  font: inherit;
+  background: #fff;
+  max-width: 280px;
+}
+
 .panel {
   background: var(--card);
   border: 1px solid var(--line);
@@ -351,6 +403,7 @@ footer {
   #data-panel,
   #config-panel,
   .actions,
+  .cloud-status,
   footer {
     display: none !important;
   }

@@ -6,11 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
+    "preview": "npm run build && vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply pembagian-tim-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply pembagian-tim-db --remote",
     "test": "vitest run"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.13.16",
     "vite": "^6.3.5",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "wrangler": "^4.34.0"
   }
 }
