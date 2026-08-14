@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pembagian Tim Acak</title>
+    <title>Pembagian Grup Permainan</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,11 +16,11 @@
     <div class="page">
       <header class="hero">
         <p class="eyebrow">Pengundian peserta</p>
-        <h1>Pembagian Tim Acak</h1>
+        <h1>Pembagian Grup Permainan</h1>
         <p class="lede">
-          Unggah daftar peserta dari CSV, tentukan jumlah tim dan anggota per tim,
-          lalu sistem mengacak semua nama tanpa membedakan cabang. Data peserta dan
-          hasil undian disimpan di Cloudflare D1.
+          Unggah daftar peserta dari CSV, pilih jenis permainan, lalu sistem membagi
+          grup sesuai ukuran pertandingan dan mengacak semua nama tanpa membedakan
+          cabang. Data peserta dan hasil undian disimpan di Cloudflare D1.
         </p>
         <p class="cloud-status" id="cloud-status">Menghubungkan ke Cloudflare D1…</p>
       </header>
@@ -68,21 +68,35 @@
 
         <section class="panel hidden" id="config-panel">
           <div class="panel-head">
-            <h2>3. Atur pembagian</h2>
+            <h2>3. Pilih permainan dan atur grup</h2>
           </div>
-          <form id="config-form" class="config-grid">
-            <label>
-              Jumlah tim
-              <input id="team-count" type="number" min="1" step="1" value="16" required />
-            </label>
-            <label>
-              Anggota per tim
-              <input id="members-per-team" type="number" min="1" step="1" value="4" required />
-            </label>
-            <div class="need-box" id="need-box">
-              Kebutuhan: <strong>64 orang</strong>
+          <form id="config-form">
+            <fieldset class="game-fieldset">
+              <legend>Jenis permainan</legend>
+              <p class="hint">
+                Grup yang dibagi dipakai untuk pertandingan. Pilih permainan agar
+                jumlah anggota mengikuti aturan, lalu sesuaikan jumlah grup jika perlu.
+              </p>
+              <div class="game-grid" id="game-grid" role="radiogroup" aria-label="Jenis permainan"></div>
+            </fieldset>
+            <div class="config-grid">
+              <label>
+                Jumlah grup
+                <input id="team-count" type="number" min="1" step="1" value="16" required />
+              </label>
+              <label>
+                Anggota per grup
+                <input id="members-per-team" type="number" min="1" step="1" value="4" required />
+              </label>
+              <div class="need-box" id="need-box">
+                Kebutuhan: <strong>64 orang</strong>
+              </div>
             </div>
-            <button type="submit" class="primary">Bagi tim secara acak</button>
+            <label class="check-row">
+              <input id="balance-gender" type="checkbox" />
+              <span>Seimbangkan laki-laki dan perempuan di tiap grup</span>
+            </label>
+            <button type="submit" class="primary">Bagi grup permainan secara acak</button>
           </form>
           <p class="hint">
             Pengacakan tidak melihat cabang. Jika peserta lebih banyak dari kebutuhan,
@@ -93,7 +107,7 @@
 
         <section class="panel hidden" id="result-panel">
           <div class="panel-head">
-            <h2>4. Hasil pengundian</h2>
+            <h2>4. Grup permainan</h2>
             <div class="actions">
               <select id="draw-history" class="hidden" aria-label="Undian tersimpan"></select>
               <button type="button" class="secondary" id="reshuffle">Acak ulang</button>
@@ -108,7 +122,10 @@
       </main>
 
       <footer>
-        <p>Pembagian bersifat acak. Cabang hanya ditampilkan, tidak dipakai untuk mengelompokkan. Data disimpan di Cloudflare D1.</p>
+        <p>
+          Grup dipakai untuk pertandingan. Pembagian bersifat acak; cabang hanya
+          ditampilkan, tidak dipakai untuk mengelompokkan. Data disimpan di Cloudflare D1.
+        </p>
       </footer>
     </div>
     <script type="module" src="/src/main.js"></script>

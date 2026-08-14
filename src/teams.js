@@ -7,7 +7,11 @@ export function shuffle(items, random = Math.random) {
   return result;
 }
 
-export function divideTeams(participants, { teamCount, membersPerTeam }, random = Math.random) {
+export function divideTeams(
+  participants,
+  { teamCount, membersPerTeam, gameName = "Tim", balanceGender = false },
+  random = Math.random,
+) {
   const teamsWanted = Number(teamCount);
   const size = Number(membersPerTeam);
 
@@ -21,19 +25,22 @@ export function divideTeams(participants, { teamCount, membersPerTeam }, random 
   const needed = teamsWanted * size;
   if (participants.length < needed) {
     throw new Error(
-      `Peserta tidak cukup. Butuh ${needed} orang (${teamsWanted} tim × ${size} anggota), tersedia ${participants.length}.`,
+      `Peserta tidak cukup. Butuh ${needed} orang (${teamsWanted} grup × ${size} anggota), tersedia ${participants.length}.`,
     );
   }
 
-  const shuffled = shuffle(participants, random);
-  const selected = shuffled.slice(0, needed);
-  const leftover = shuffled.slice(needed);
-  const teams = [];
+  const prefix = String(gameName || "Tim").trim() || "Tim";
+  const selected = balanceGender
+    ? pickBalanced(participants, teamsWanted, size, random)
+    : shuffle(participants, random).slice(0, needed);
+  const selectedSet = new Set(selected);
+  const leftover = participants.filter((person) => !selectedSet.has(person));
 
+  const teams = [];
   for (let i = 0; i < teamsWanted; i += 1) {
     teams.push({
       number: i + 1,
-      name: `Tim ${i + 1}`,
+      name: `${prefix} ${i + 1}`,
       members: selected.slice(i * size, (i + 1) * size),
     });
   }
@@ -44,17 +51,55 @@ export function divideTeams(participants, { teamCount, membersPerTeam }, random 
     needed,
     used: selected.length,
     total: participants.length,
+    gameName: prefix,
   };
 }
 
-export function teamsToCsv(teams, leftover = []) {
-  const header = "tim,nama,jenis kelamin,nama cabang";
+function pickBalanced(participants, teamCount, membersPerTeam, random) {
+  const queues = {
+    laki: shuffle(
+      participants.filter((person) => person.jenisKelamin === "Laki-laki"),
+      random,
+    ),
+    perempuan: shuffle(
+      participants.filter((person) => person.jenisKelamin === "Perempuan"),
+      random,
+    ),
+    lain: shuffle(
+      participants.filter(
+        (person) => person.jenisKelamin !== "Laki-laki" && person.jenisKelamin !== "Perempuan",
+      ),
+      random,
+    ),
+  };
+
+  const teams = Array.from({ length: teamCount }, () => []);
+  for (const team of teams) {
+    while (team.length < membersPerTeam) {
+      const laki = team.filter((person) => person.jenisKelamin === "Laki-laki").length;
+      const perempuan = team.filter((person) => person.jenisKelamin === "Perempuan").length;
+      const person =
+        laki <= perempuan && queues.laki.length
+          ? queues.laki.shift()
+          : queues.perempuan.length
+            ? queues.perempuan.shift()
+            : queues.laki.shift() || queues.lain.shift();
+      if (!person) break;
+      team.push(person);
+    }
+  }
+
+  return teams.flat();
+}
+
+export function teamsToCsv(teams, leftover = [], gameName = "") {
+  const header = "permainan,tim,nama,jenis kelamin,nama cabang";
   const rows = [];
 
   for (const team of teams) {
     for (const member of team.members) {
       rows.push(
-        [team.name, member.nama, member.jenisKelamin, member.cabang]
+        [gameName, team.name, member.nama, member.jenisKelamin, member.cabang]
           .map(csvCell)
           .join(","),
       );
@@ -63,7 +108,7 @@ export function teamsToCsv(teams, leftover = []) {
 
   for (const member of leftover) {
     rows.push(
-      ["Cadangan", member.nama, member.jenisKelamin, member.cabang]
+      [gameName, "Cadangan", member.nama, member.jenisKelamin, member.cabang]
         .map(csvCell)
         .join(","),
     );

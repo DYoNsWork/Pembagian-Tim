@@ -1,5 +1,6 @@
 import { divideTeams } from "../src/teams.js";
 import { chunk, groupDrawMembers, personFromRow } from "../src/draws.js";
+import { getGame, GAMES } from "../src/games.js";
 
 const SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS participants (id INTEGER PRIMARY KEY AUTOINCREMENT, nama TEXT NOT NULL, jenis_kelamin TEXT NOT NULL, cabang TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
@@ -21,6 +22,7 @@ export default {
 
     try {
       await env.DB.batch(SCHEMA_STATEMENTS.map((sql) => env.DB.prepare(sql)));
+      await ensureDrawGameColumns(env);
       return await handleApi(request, env, url);
     } catch (error) {
       const status = Number(error.status) || 500;
@@ -50,6 +52,10 @@ async function handleApi(request, env, url) {
       env.DB.prepare("DELETE FROM meta"),
     ]);
     return json({ ok: true });
+  }
+
+  if (path === "/api/games" && request.method === "GET") {
+    return json({ games: GAMES });
   }
 
   if (path === "/api/draws" && request.method === "GET") {
@@ -129,7 +135,7 @@ async function saveParticipants(env, body) {
 
 async function listDraws(env) {
   const { results } = await env.DB.prepare(
-    "SELECT id, team_count, members_per_team, created_at FROM draws ORDER BY id DESC LIMIT 20",
+    "SELECT id, team_count, members_per_team, created_at, game_id, game_name FROM draws ORDER BY id DESC LIMIT 20",
   ).all();
 
   return {
@@ -137,26 +143,35 @@ async function listDraws(env) {
       id: row.id,
       teamCount: row.team_count,
       membersPerTeam: row.members_per_team,
+      gameId: row.game_id || "umum",
+      gameName: row.game_name || "Umum / kustom",
       createdAt: row.created_at,
     })),
   };
 }
 
 async function createDraw(env, body) {
+  const game = getGame(body?.gameId);
   const teamCount = Number(body?.teamCount);
-  const membersPerTeam = Number(body?.membersPerTeam);
+  const membersPerTeam = Number(body?.membersPerTeam) || game.members;
+  const balanceGender = Boolean(body?.balanceGender);
   const stored = await listParticipants(env);
   let result;
   try {
-    result = divideTeams(stored.participants, { teamCount, membersPerTeam });
+    result = divideTeams(stored.participants, {
+      teamCount,
+      membersPerTeam,
+      gameName: game.labelPrefix,
+      balanceGender,
+    });
   } catch (error) {
     throw Object.assign(error, { status: 400 });
   }
 
   const drawInsert = await env.DB.prepare(
-    "INSERT INTO draws (team_count, members_per_team) VALUES (?, ?) RETURNING id, created_at",
+    "INSERT INTO draws (team_count, members_per_team, game_id, game_name) VALUES (?, ?, ?, ?) RETURNING id, created_at",
   )
-    .bind(teamCount, membersPerTeam)
+    .bind(teamCount, membersPerTeam, game.id, game.name)
     .first();
 
   const memberStmt = env.DB.prepare(
@@ -203,13 +218,16 @@ async function createDraw(env, body) {
     createdAt: drawInsert.created_at,
     teamCount,
     membersPerTeam,
+    gameId: game.id,
+    gameName: game.name,
+    balanceGender,
     ...result,
   };
 }
 
 async function getDraw(env, id) {
   const draw = await env.DB.prepare(
-    "SELECT id, team_count, members_per_team, created_at FROM draws WHERE id = ?",
+    "SELECT id, team_count, members_per_team, created_at, game_id, game_name FROM draws WHERE id = ?",
   )
     .bind(id)
     .first();
@@ -228,9 +246,22 @@ async function getDraw(env, id) {
     createdAt: draw.created_at,
     teamCount: draw.team_count,
     membersPerTeam: draw.members_per_team,
+    gameId: draw.game_id || "umum",
+    gameName: draw.game_name || "Umum / kustom",
     needed: draw.team_count * draw.members_per_team,
     ...grouped,
   };
+}
+
+async function ensureDrawGameColumns(env) {
+  const { results } = await env.DB.prepare("PRAGMA table_info(draws)").all();
+  const columns = new Set((results || []).map((row) => row.name));
+  if (!columns.has("game_id")) {
+    await env.DB.prepare("ALTER TABLE draws ADD COLUMN game_id TEXT").run();
+  }
+  if (!columns.has("game_name")) {
+    await env.DB.prepare("ALTER TABLE draws ADD COLUMN game_name TEXT").run();
+  }
 }
 
 async function readJson(request) {
