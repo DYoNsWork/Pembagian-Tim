@@ -58,12 +58,24 @@ Persiapan: akun [Cloudflare](https://dash.cloudflare.com/sign-up) (gratis), Node
    | Pengaturan | Isi |
    | --- | --- |
    | Project / Worker name | `pembagian-tim` (harus sama dengan `name` di `wrangler.jsonc`) |
-   | Git branch | `main` (setelah PR digabung) atau branch fitur yang berisi kode ini |
+   | Git branch | `cursor/pembagian-tim-acak-4761` sampai PR digabung ke `main` |
    | Build command | `npm run build` |
-   | Deploy command | `npx wrangler deploy` |
+   | Deploy command | `npm run deploy` |
+
+   Jangan memakai `npx wrangler deploy` sendirian. Perintah itu tidak membangun folder HTML/CSS/JS, dan itu penyebab error *Could not detect a directory containing static files*.
 
 7. Klik **Save and Deploy**. Cloudflare akan *pull* kode dari GitHub, build, lalu deploy.
 8. Setelah sukses, buka URL `https://pembagian-tim.<akun-anda>.workers.dev`.
+
+### Jika build gagal: "Could not detect a directory containing static files"
+
+Log yang hanya menjalankan `npx wrangler deploy` (tanpa `npm run build`) akan gagal. Perbaiki di dashboard:
+
+1. Buka Worker **pembagian-tim** → **Settings** → **Build**.
+2. **Git branch:** `cursor/pembagian-tim-acak-4761` (kode aplikasi belum ada di `main` sebelum PR digabung).
+3. **Build command:** `npm run build`
+4. **Deploy command:** `npm run deploy`
+5. **Save**, lalu **Retry build**.
 
 **Database peserta (wajib, sekali saja):**
 
