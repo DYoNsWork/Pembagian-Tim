@@ -61,21 +61,23 @@ Persiapan: akun [Cloudflare](https://dash.cloudflare.com/sign-up) (gratis), Node
    | Git branch | `cursor/pembagian-tim-acak-4761` sampai PR digabung ke `main` |
    | Build command | `npm run build` |
    | Deploy command | `npm run deploy` |
+   | Non-production deploy command | `npm run versions-upload` |
 
-   Jangan memakai `npx wrangler deploy` sendirian. Perintah itu tidak membangun folder HTML/CSS/JS, dan itu penyebab error *Could not detect a directory containing static files*.
+   Branch fitur memakai `wrangler versions upload`. Pakai `npm run versions-upload` agar Vite build jalan dulu.
 
 7. Klik **Save and Deploy**. Cloudflare akan *pull* kode dari GitHub, build, lalu deploy.
 8. Setelah sukses, buka URL `https://pembagian-tim.<akun-anda>.workers.dev`.
 
-### Jika build gagal: "Could not detect a directory containing static files"
+### Jika build gagal karena `assets.directory` atau static files
 
-Log yang hanya menjalankan `npx wrangler deploy` (tanpa `npm run build`) akan gagal. Perbaiki di dashboard:
+Error *missing the required directory property* atau *Could not detect a directory containing static files* berarti Wrangler dijalankan tanpa folder hasil Vite. Perbaiki di dashboard:
 
 1. Buka Worker **pembagian-tim** → **Settings** → **Build**.
-2. **Git branch:** `cursor/pembagian-tim-acak-4761` (kode aplikasi belum ada di `main` sebelum PR digabung).
+2. **Git branch:** `cursor/pembagian-tim-acak-4761`.
 3. **Build command:** `npm run build`
 4. **Deploy command:** `npm run deploy`
-5. **Save**, lalu **Retry build**.
+5. **Non-production deploy command:** `npm run versions-upload`
+6. **Save**, lalu **Retry build**.
 
 **Database peserta (wajib, sekali saja):**
 
