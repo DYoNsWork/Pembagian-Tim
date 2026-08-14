@@ -149,7 +149,7 @@ function updateNeed() {
   const mode = genderModeLabel(selectedGenderMode());
   const label = game ? `${game.name} · ${mode}` : mode;
   needBox.innerHTML = `${escapeHtml(label)}: <strong>${needed || 0} orang</strong> dari ${pool.length} peserta`;
-  needBox.style.color = enough ? "inherit" : "var(--danger)";
+  needBox.classList.toggle("is-short", !enough);
 }
 
 function updateDrawPanel() {
@@ -338,14 +338,16 @@ async function readFile(file) {
 
 function renderResult(result) {
   lastResult = result;
-  const gameLabel = result.gameName ? `${result.gameName} · ` : "";
   const modeLabel = genderModeLabel(result.genderMode);
-  const when = result.createdAt ? ` Disimpan ${formatTime(result.createdAt)}.` : "";
   const pool = result.poolSize || result.used;
-  const sessionLabel = result.groupsPerSession
-    ? ` ${result.groupsPerSession} grup per sesi.`
-    : "";
-  resultMeta.textContent = `${gameLabel}${modeLabel} · ${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota.${sessionLabel} ${result.used} peserta terpakai dari ${pool}.${when}`;
+  resultMeta.innerHTML = [
+    result.gameName ? `<span class="meta-chip">${escapeHtml(result.gameName)}</span>` : "",
+    `<span class="meta-chip">${escapeHtml(modeLabel)}</span>`,
+    `<span class="meta-chip">${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota</span>`,
+    result.groupsPerSession ? `<span class="meta-chip">${result.groupsPerSession} grup per sesi</span>` : "",
+    `<span class="meta-chip">${result.used} / ${pool} peserta</span>`,
+    result.createdAt ? `<span class="meta-chip muted-chip">${escapeHtml(formatTime(result.createdAt))}</span>` : "",
+  ].join("");
   renderBracket(result);
   teamsEl.innerHTML = result.teams
     .map(

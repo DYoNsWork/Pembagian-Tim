@@ -1,8 +1,10 @@
 <!doctype html>
-<html lang="id">
+<html lang="id" class="theme-dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b1210" />
     <title>Pembagian Grup Permainan</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,14 +18,29 @@
     <div class="app">
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
-          <p class="eyebrow">Pengundian peserta</p>
-          <strong>Pembagian Grup</strong>
+          <span class="brand-mark" aria-hidden="true">PG</span>
+          <div>
+            <p class="eyebrow">Pengundian peserta</p>
+            <strong>Pembagian Grup</strong>
+          </div>
         </div>
         <nav class="side-nav" id="side-nav" aria-label="Menu utama">
-          <button type="button" class="nav-item is-active" data-view="peserta">Peserta</button>
-          <button type="button" class="nav-item" data-view="permainan">Permainan</button>
-          <button type="button" class="nav-item" data-view="pembagian">Pembagian</button>
-          <button type="button" class="nav-item" data-view="hasil">Hasil</button>
+          <button type="button" class="nav-item is-active" data-view="peserta">
+            <span class="nav-index">01</span>
+            <span>Peserta</span>
+          </button>
+          <button type="button" class="nav-item" data-view="permainan">
+            <span class="nav-index">02</span>
+            <span>Permainan</span>
+          </button>
+          <button type="button" class="nav-item" data-view="pembagian">
+            <span class="nav-index">03</span>
+            <span>Pembagian</span>
+          </button>
+          <button type="button" class="nav-item" data-view="hasil">
+            <span class="nav-index">04</span>
+            <span>Hasil</span>
+          </button>
         </nav>
         <p class="cloud-status" id="cloud-status">Menghubungkan ke Cloudflare D1…</p>
         <button type="button" class="danger hidden" id="clear-cloud">Hapus data cloud</button>
@@ -94,7 +111,7 @@
                 <div class="game-toolbar">
                   <button type="button" class="secondary" id="add-game">Tambah permainan</button>
                 </div>
-                <p class="empty-games" id="games-empty">Belum ada permainan. Klik <strong>Tambah permainan</strong> untuk mulai.</p>
+                <p class="empty-games" id="games-empty">Belum ada permainan. Klik <strong>Tambah permainan</strong> untuk mulai katalog.</p>
                 <div class="game-grid hidden" id="game-grid" aria-label="Daftar permainan"></div>
                 <form id="game-editor" class="game-editor hidden">
                   <input id="game-edit-id" type="hidden" />
@@ -212,7 +229,7 @@
               <section class="bracket hidden" id="bracket"></section>
               <div class="leftover hidden" id="leftover"></div>
             </section>
-            <p class="empty-games" id="result-empty">Belum ada hasil pembagian. Bagi grup di menu Pembagian.</p>
+            <p class="empty-games" id="result-empty">Belum ada hasil pembagian. Bagi grup di menu <strong>Pembagian</strong> untuk melihat daftar grup dan bagan gugur.</p>
           </section>
         </main>
 
