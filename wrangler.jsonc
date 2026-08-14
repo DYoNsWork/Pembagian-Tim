@@ -14,19 +14,6 @@
     {
       "binding": "DB",
       "database_name": "pembagian-tim-db",
-      // Ganti dengan ID dari `npx wrangler d1 create pembagian-tim-db` sebelum deploy.
-      "database_id": "00000000-0000-0000-0000-000000000001"
-    }
-  ],
-  "observability": {
-    "enabled": true
-  }
-}
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "pembagian-tim-db",
-      // Ganti dengan ID dari `npx wrangler d1 create pembagian-tim-db` sebelum deploy.
       "database_id": "00000000-0000-0000-0000-000000000001"
     }
   ],
