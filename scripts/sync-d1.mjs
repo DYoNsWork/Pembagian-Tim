@@ -11,8 +11,14 @@ function extractDatabaseId(text) {
   return real || ids[0] || null;
 }
 
+function extractWorkerName(text) {
+  const match = text.match(/"name"\s*:\s*"([^"]+)"/);
+  return (match?.[1] || "pertandingan").replaceAll("-", "_");
+}
+
 const source = readFileSync(join(root, "wrangler.jsonc"), "utf8");
 const databaseId = extractDatabaseId(source);
+const workerDir = extractWorkerName(source);
 
 if (!databaseId || databaseId === PLACEHOLDER) {
   console.error(
@@ -21,7 +27,7 @@ if (!databaseId || databaseId === PLACEHOLDER) {
   process.exit(1);
 }
 
-const generatedPath = join(root, "dist/pembagian_tim/wrangler.json");
+const generatedPath = join(root, "dist", workerDir, "wrangler.json");
 const generated = JSON.parse(readFileSync(generatedPath, "utf8"));
 const bindings = Array.isArray(generated.d1_databases) ? generated.d1_databases : [];
 
