@@ -1,0 +1,422 @@
+:root {
+  --ink: #1c1914;
+  --muted: #5d564c;
+  --paper: #f3ead8;
+  --card: #fffaf1;
+  --line: #d9cbb3;
+  --green: #1f5c45;
+  --green-dark: #143c2d;
+  --gold: #c9892c;
+  --danger: #9b2c2c;
+  --shadow: 0 18px 40px rgba(28, 25, 20, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Outfit, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top right, rgba(201, 137, 44, 0.16), transparent 28%),
+    linear-gradient(180deg, #efe4cc 0%, var(--paper) 180px);
+  min-height: 100vh;
+}
+
+.page {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 40px 0 64px;
+}
+
+.hero {
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: var(--gold);
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+h1,
+h2,
+.need-box strong {
+  font-family: Fraunces, Georgia, serif;
+}
+
+h1 {
+  font-size: clamp(2.1rem, 5vw, 3.4rem);
+  line-height: 1.05;
+  margin: 0 0 12px;
+}
+
+.lede {
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.cloud-status {
+  display: inline-block;
+  margin: 16px 0 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #dceee4;
+  color: var(--green-dark);
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.cloud-status[data-kind="warn"] {
+  background: #f3e0d6;
+  color: var(--danger);
+}
+
+.cloud-status[data-kind="muted"] {
+  background: #efe6d4;
+  color: var(--muted);
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.upload-actions .hint {
+  margin: 0;
+}
+
+.danger {
+  height: 40px;
+  border-radius: 12px;
+  padding: 0 14px;
+  font-weight: 700;
+  background: #f3e0d6;
+  color: var(--danger);
+}
+
+select {
+  height: 46px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 0 12px;
+  font: inherit;
+  background: #fff;
+  max-width: 280px;
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 22px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.ghost-link,
+.muted,
+.hint,
+footer {
+  color: var(--muted);
+}
+
+.ghost-link {
+  font-weight: 600;
+}
+
+.dropzone {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  border: 1.5px dashed #b9a888;
+  border-radius: 18px;
+  padding: 18px;
+  cursor: pointer;
+  background: #fbf6ea;
+}
+
+.dropzone:hover,
+.dropzone.dragover {
+  border-color: var(--green);
+  background: #f4f8f4;
+}
+
+.dropzone-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--green);
+  color: #fff;
+  font-weight: 700;
+  flex: none;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #efe6d4;
+  padding: 0.1em 0.35em;
+  border-radius: 6px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.stat {
+  background: #f7f0e2;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.stat span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.stat strong {
+  font-size: 1.4rem;
+}
+
+.table-wrap {
+  overflow: auto;
+  max-height: 320px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #efe6d4;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+input[type="number"] {
+  height: 46px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 0 12px;
+  font: inherit;
+  background: #fff;
+}
+
+.need-box {
+  background: #efe6d4;
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+}
+
+button {
+  font: inherit;
+  border: 0;
+  cursor: pointer;
+}
+
+.primary,
+.secondary {
+  height: 46px;
+  border-radius: 12px;
+  padding: 0 16px;
+  font-weight: 700;
+}
+
+.primary {
+  background: var(--green);
+  color: #fff;
+}
+
+.primary:hover {
+  background: var(--green-dark);
+}
+
+.secondary {
+  background: #efe6d4;
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.error {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.team-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.team-card header {
+  background: var(--green);
+  color: #fff;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.team-card ol {
+  margin: 0;
+  padding: 8px 12px 12px 32px;
+}
+
+.team-card li {
+  margin: 8px 0;
+}
+
+.member-meta {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.leftover {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f7f0e2;
+}
+
+.gender {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #efe6d4;
+}
+
+.gender.pria {
+  background: #dceee4;
+}
+
+.gender.wanita {
+  background: #f3e0d6;
+}
+
+footer {
+  text-align: center;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 860px) {
+  .stats,
+  .config-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .primary {
+    grid-column: 1 / -1;
+  }
+
+  .panel-head,
+  .actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .hero,
+  #upload-panel,
+  #data-panel,
+  #config-panel,
+  .actions,
+  .cloud-status,
+  footer {
+    display: none !important;
+  }
+
+  .page,
+  .panel {
+    width: 100%;
+    box-shadow: none;
+    border: 0;
+    padding: 0;
+  }
+
+  .teams {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

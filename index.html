@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pembagian Tim Acak</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <p class="eyebrow">Pengundian peserta</p>
+        <h1>Pembagian Tim Acak</h1>
+        <p class="lede">
+          Unggah daftar peserta dari CSV, tentukan jumlah tim dan anggota per tim,
+          lalu sistem mengacak semua nama tanpa membedakan cabang. Data peserta dan
+          hasil undian disimpan di Cloudflare D1.
+        </p>
+        <p class="cloud-status" id="cloud-status">Menghubungkan ke Cloudflare D1…</p>
+      </header>
+
+      <main>
+        <section class="panel" id="upload-panel">
+          <div class="panel-head">
+            <h2>1. Unggah data peserta</h2>
+            <a class="ghost-link" href="./contoh-peserta.csv" download>Unduh contoh CSV</a>
+          </div>
+          <label class="dropzone" id="dropzone" for="file-input">
+            <input id="file-input" type="file" accept=".csv,text/csv" hidden />
+            <span class="dropzone-mark">CSV</span>
+            <span>
+              <strong>Seret file ke sini</strong> atau klik untuk memilih.
+              Kolom yang diperlukan: <code>nama, jenis kelamin, nama cabang</code>
+            </span>
+          </label>
+          <div class="upload-actions">
+            <p class="hint" id="file-status">Belum ada file yang diunggah. Data akan disimpan ke Cloudflare D1.</p>
+            <button type="button" class="danger hidden" id="clear-cloud">Hapus data cloud</button>
+          </div>
+        </section>
+
+        <section class="panel hidden" id="data-panel">
+          <div class="panel-head">
+            <h2>2. Data peserta</h2>
+            <p class="muted" id="file-name"></p>
+          </div>
+          <div class="stats" id="stats"></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Nama</th>
+                  <th>Jenis kelamin</th>
+                  <th>Nama cabang</th>
+                </tr>
+              </thead>
+              <tbody id="participant-rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel hidden" id="config-panel">
+          <div class="panel-head">
+            <h2>3. Atur pembagian</h2>
+          </div>
+          <form id="config-form" class="config-grid">
+            <label>
+              Jumlah tim
+              <input id="team-count" type="number" min="1" step="1" value="16" required />
+            </label>
+            <label>
+              Anggota per tim
+              <input id="members-per-team" type="number" min="1" step="1" value="4" required />
+            </label>
+            <div class="need-box" id="need-box">
+              Kebutuhan: <strong>64 orang</strong>
+            </div>
+            <button type="submit" class="primary">Bagi tim secara acak</button>
+          </form>
+          <p class="hint">
+            Pengacakan tidak melihat cabang. Jika peserta lebih banyak dari kebutuhan,
+            sisanya masuk daftar cadangan.
+          </p>
+          <p class="error hidden" id="config-error"></p>
+        </section>
+
+        <section class="panel hidden" id="result-panel">
+          <div class="panel-head">
+            <h2>4. Hasil pengundian</h2>
+            <div class="actions">
+              <select id="draw-history" class="hidden" aria-label="Undian tersimpan"></select>
+              <button type="button" class="secondary" id="reshuffle">Acak ulang</button>
+              <button type="button" class="secondary" id="export-csv">Unduh hasil CSV</button>
+              <button type="button" class="secondary" id="print-result">Cetak</button>
+            </div>
+          </div>
+          <p class="result-meta" id="result-meta"></p>
+          <div class="teams" id="teams"></div>
+          <div class="leftover hidden" id="leftover"></div>
+        </section>
+      </main>
+
+      <footer>
+        <p>Pembagian bersifat acak. Cabang hanya ditampilkan, tidak dipakai untuk mengelompokkan. Data disimpan di Cloudflare D1.</p>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
