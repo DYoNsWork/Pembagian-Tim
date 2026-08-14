@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "pembagian-tim",
+  "name": "pertandingan",
   "compatibility_date": "2026-08-14",
   "main": "./worker/index.js",
   "build": {

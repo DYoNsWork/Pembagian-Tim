@@ -63,7 +63,7 @@ Persiapan: akun [Cloudflare](https://dash.cloudflare.com/sign-up) (gratis), Node
 
    | Pengaturan | Isi |
    | --- | --- |
-   | Project / Worker name | `pembagian-tim` (harus sama dengan `name` di `wrangler.jsonc`) |
+   | Project / Worker name | `pertandingan` (harus sama dengan `name` di `wrangler.jsonc`) |
    | Git branch | `cursor/pembagian-tim-acak-4761` sampai PR digabung ke `main` |
    | Build command | `npm run build` |
    | Deploy command | `npm run deploy` |
@@ -72,13 +72,13 @@ Persiapan: akun [Cloudflare](https://dash.cloudflare.com/sign-up) (gratis), Node
    Branch fitur memakai `wrangler versions upload`. Pakai `npm run versions-upload` agar Vite build jalan dulu.
 
 7. Klik **Save and Deploy**. Cloudflare akan *pull* kode dari GitHub, build, lalu deploy.
-8. Setelah sukses, buka URL `https://pembagian-tim.<akun-anda>.workers.dev`.
+8. Setelah sukses, buka URL `https://pertandingan.<akun-anda>.workers.dev`.
 
 ### Jika build gagal karena `assets.directory` atau static files
 
 Error *missing the required directory property* atau *Could not detect a directory containing static files* berarti Wrangler dijalankan tanpa folder hasil Vite. Perbaiki di dashboard:
 
-1. Buka Worker **pembagian-tim** → **Settings** → **Build**.
+1. Buka Worker **pertandingan** → **Settings** → **Build**.
 2. **Git branch:** `cursor/pembagian-tim-acak-4761`.
 3. **Build command:** `npm run build`
 4. **Deploy command:** `npm run deploy`
@@ -157,7 +157,7 @@ Setelah itu, setiap **push ke branch yang terhubung** akan di-deploy Cloudflare 
 
 7. Buka URL yang dicetak Wrangler, biasanya:
 
-   `https://pembagian-tim.<akun-anda>.workers.dev`
+   `https://pertandingan.<akun-anda>.workers.dev`
 
 ### Sesudah live
 
