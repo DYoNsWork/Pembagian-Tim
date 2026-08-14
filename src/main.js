@@ -7,12 +7,20 @@ import {
 } from "./teams.js";
 import { getGame } from "./games.js";
 import { api } from "./api.js";
+import {
+  RIGHTS,
+  ROLE_PRESETS,
+  firstAllowedView,
+  hasRight,
+  rightsForRole,
+} from "./auth.js";
 
 const VIEWS = {
   peserta: { eyebrow: "Peserta", title: "Data peserta" },
   permainan: { eyebrow: "Permainan", title: "Jenis permainan" },
   pembagian: { eyebrow: "Pembagian", title: "Bagi grup" },
   hasil: { eyebrow: "Hasil", title: "Grup permainan" },
+  pengguna: { eyebrow: "Pengguna", title: "Hak akses" },
 };
 
 const fileInput = document.querySelector("#file-input");
@@ -57,6 +65,14 @@ const sidebar = document.querySelector("#sidebar");
 const navBackdrop = document.querySelector("#nav-backdrop");
 const viewEyebrow = document.querySelector("#view-eyebrow");
 const viewTitle = document.querySelector("#view-title");
+const appShell = document.querySelector("#app-shell");
+const authScreen = document.querySelector("#auth-screen");
+const setupForm = document.querySelector("#setup-form");
+const loginForm = document.querySelector("#login-form");
+const userList = document.querySelector("#user-list");
+const userEditor = document.querySelector("#user-editor");
+const userRights = document.querySelector("#user-rights");
+const userRole = document.querySelector("#user-role");
 
 let participants = [];
 let games = [];
@@ -64,6 +80,8 @@ let lastResult = null;
 let selectedGameId = "";
 let currentView = "peserta";
 let draws = [];
+let currentUser = null;
+let users = [];
 
 function show(el) {
   el.classList.remove("hidden");
@@ -102,13 +120,24 @@ function openSidebar() {
   show(navBackdrop);
 }
 
+function can(right) {
+  return hasRight(currentUser, right);
+}
+
 function showView(name) {
   if (!VIEWS[name]) return;
+  if (!can(name)) {
+    const fallback = firstAllowedView(currentUser);
+    if (fallback && fallback !== name) {
+      showView(fallback);
+    }
+    return;
+  }
   currentView = name;
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("hidden", view.id !== `view-${name}`);
   });
-  document.querySelectorAll(".nav-item").forEach((button) => {
+  document.querySelectorAll("[data-view]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.view === name);
   });
   viewEyebrow.textContent = VIEWS[name].eyebrow;
@@ -116,7 +145,27 @@ function showView(name) {
     name === "hasil" && lastResult?.gameName ? lastResult.gameName : VIEWS[name].title;
   closeSidebar();
   if (name === "pembagian") updateDrawPanel();
-  if (name === "permainan" && !games.length) openGameEditor();
+  if (name === "permainan" && !games.length && can("permainan")) openGameEditor();
+  if (name === "pengguna") loadUsers();
+}
+
+function applyAccessUi() {
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.classList.toggle("hidden", !can(button.dataset.view));
+  });
+  const name = currentUser?.displayName || currentUser?.username || "Pengguna";
+  const role = currentUser?.role || "";
+  document.querySelectorAll(".user-chip").forEach((el) => {
+    el.textContent = role ? `${name} · ${role}` : name;
+  });
+  document.querySelector("#clear-cloud")?.classList.toggle("hidden", !(can("peserta") && participants.length));
+  document.querySelector("#add-game")?.classList.toggle("hidden", !can("permainan"));
+  document.querySelector("#reshuffle")?.classList.toggle("hidden", !can("pembagian"));
+  document.querySelector("#upload-panel")?.classList.toggle("hidden", !can("peserta"));
+}
+
+function selectedRights() {
+  return [...userRights.querySelectorAll("input:checked")].map((input) => input.value);
 }
 
 function setGames(list, { keepSelection = true } = {}) {
@@ -628,28 +677,196 @@ async function loadGamesFromCloud() {
 
 async function loadFromCloud() {
   try {
-    await loadGamesFromCloud();
-    const data = await api("/api/participants");
-    if (data.participants.length) {
-      showParticipantData(data.participants, data.filename || "Cloudflare D1");
-      setCloudStatus(`${data.participants.length} peserta dimuat dari Cloudflare D1`);
+    if (can("permainan") || can("pembagian") || can("hasil")) {
+      await loadGamesFromCloud();
+    }
+    if (can("peserta")) {
+      const data = await api("/api/participants");
+      if (data.participants.length) {
+        showParticipantData(data.participants, data.filename || "Cloudflare D1");
+        setCloudStatus(`${data.participants.length} peserta dimuat dari Cloudflare D1`);
+      } else {
+        setCloudStatus("Belum ada data peserta di Cloudflare D1. Unggah CSV untuk menyimpan.", "muted");
+        hide(clearBtn);
+        updateDrawPanel();
+      }
     } else {
-      setCloudStatus("Belum ada data peserta di Cloudflare D1. Unggah CSV untuk menyimpan.", "muted");
       hide(clearBtn);
       updateDrawPanel();
     }
 
-    const { draws } = await api("/api/draws");
-    await refreshDrawHistory(draws[0]?.id);
-    if (draws[0]) {
-      const latest = await api(`/api/draws/${draws[0].id}`);
-      renderResult(latest);
+    if (can("pembagian") || can("hasil")) {
+      const { draws: history } = await api("/api/draws");
+      await refreshDrawHistory(history[0]?.id);
+      if (history[0]) {
+        const latest = await api(`/api/draws/${history[0].id}`);
+        renderResult(latest);
+      }
     }
+    applyAccessUi();
   } catch (error) {
+    if (error.status === 401) {
+      showLogin();
+      return;
+    }
     setCloudStatus(
       `Cloudflare belum terhubung: ${error.message}. Jalankan npm run dev atau deploy Worker.`,
       "warn",
     );
+  }
+}
+
+function renderUserRights(selected = [], { locked = false } = {}) {
+  userRights.innerHTML = `<legend>Hak akses</legend>${RIGHTS.map(
+    (right) => `
+      <label class="right-option">
+        <input type="checkbox" value="${right.id}" ${selected.includes(right.id) ? "checked" : ""} ${locked ? "disabled" : ""} />
+        <span>
+          <strong>${right.label}</strong>
+          <small>${right.description}</small>
+        </span>
+      </label>
+    `,
+  ).join("")}`;
+}
+
+function openUserEditor(user) {
+  hide(document.querySelector("#user-error"));
+  if (user) {
+    document.querySelector("#user-edit-id").value = String(user.id);
+    document.querySelector("#user-display-name").value = user.displayName;
+    document.querySelector("#user-username").value = user.username;
+    document.querySelector("#user-password").value = "";
+    document.querySelector("#user-password").required = false;
+    userRole.value = user.role;
+    renderUserRights(user.rights, { locked: user.role === "admin" });
+  } else {
+    document.querySelector("#user-edit-id").value = "";
+    document.querySelector("#user-display-name").value = "";
+    document.querySelector("#user-username").value = "";
+    document.querySelector("#user-password").value = "";
+    document.querySelector("#user-password").required = true;
+    userRole.value = "panitia";
+    renderUserRights(ROLE_PRESETS.panitia);
+  }
+  show(userEditor);
+}
+
+function closeUserEditor() {
+  hide(userEditor);
+  hide(document.querySelector("#user-error"));
+  userEditor.reset();
+}
+
+function renderUsers() {
+  userList.innerHTML = users
+    .map(
+      (user) => `
+        <article class="user-card">
+          <div>
+            <strong>${escapeHtml(user.displayName)}</strong>
+            <span class="user-meta">${escapeHtml(user.username)} · ${escapeHtml(user.role)}</span>
+            <span class="user-meta">${user.rights.map((right) => RIGHTS.find((item) => item.id === right)?.label || right).join(" · ")}</span>
+          </div>
+          <div class="game-card-actions">
+            <button type="button" class="text-btn" data-user-action="edit" data-user-id="${user.id}">Ubah</button>
+            <button type="button" class="text-btn danger-text" data-user-action="delete" data-user-id="${user.id}">Hapus</button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+async function loadUsers() {
+  if (!can("pengguna")) return;
+  const data = await api("/api/users");
+  users = data.users || [];
+  renderUsers();
+}
+
+async function saveUser(event) {
+  event.preventDefault();
+  const errorEl = document.querySelector("#user-error");
+  hide(errorEl);
+  const editingId = document.querySelector("#user-edit-id").value;
+  const payload = {
+    displayName: document.querySelector("#user-display-name").value,
+    username: document.querySelector("#user-username").value,
+    password: document.querySelector("#user-password").value,
+    role: userRole.value,
+    rights: selectedRights(),
+  };
+  try {
+    const result = editingId
+      ? await api(`/api/users/${editingId}`, { method: "PUT", body: JSON.stringify(payload) })
+      : await api("/api/users", { method: "POST", body: JSON.stringify(payload) });
+    users = result.users || [];
+    renderUsers();
+    closeUserEditor();
+    setCloudStatus(editingId ? "Pengguna diperbarui" : `Pengguna ${result.user.username} ditambahkan`);
+    if (result.user.id === currentUser?.id) {
+      currentUser = result.user;
+      applyAccessUi();
+    }
+  } catch (error) {
+    errorEl.textContent = error.message;
+    show(errorEl);
+  }
+}
+
+async function removeUser(id) {
+  if (!confirm("Hapus pengguna ini?")) return;
+  try {
+    const result = await api(`/api/users/${id}`, { method: "DELETE" });
+    users = result.users || [];
+    renderUsers();
+    setCloudStatus("Pengguna dihapus");
+  } catch (error) {
+    setCloudStatus(error.message, "warn");
+  }
+}
+
+function showLogin() {
+  hide(setupForm);
+  show(loginForm);
+  show(authScreen);
+  hide(appShell);
+}
+
+function showSetup() {
+  show(setupForm);
+  hide(loginForm);
+  show(authScreen);
+  hide(appShell);
+}
+
+async function enterApp(user, defaultView) {
+  currentUser = user;
+  hide(authScreen);
+  show(appShell);
+  applyAccessUi();
+  await loadFromCloud();
+  showView(defaultView || firstAllowedView(currentUser) || "peserta");
+}
+
+async function boot() {
+  renderUserRights(ROLE_PRESETS.panitia);
+  try {
+    const me = await api("/api/auth/me");
+    if (me.needsSetup) {
+      showSetup();
+      return;
+    }
+    if (!me.user) {
+      showLogin();
+      return;
+    }
+    await enterApp(me.user, me.defaultView);
+  } catch (error) {
+    showLogin();
+    document.querySelector("#login-error").textContent = error.message;
+    show(document.querySelector("#login-error"));
   }
 }
 
@@ -793,10 +1010,82 @@ document.querySelector("#side-nav").addEventListener("click", (event) => {
   if (button) showView(button.dataset.view);
 });
 
-document.querySelector("#nav-toggle").addEventListener("click", openSidebar);
+document.querySelector("#bottom-nav").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-view]");
+  if (button) showView(button.dataset.view);
+});
+
+document.querySelectorAll(".logout-btn").forEach((button) => {
+  button.addEventListener("click", async () => {
+    try {
+      await api("/api/auth/logout", { method: "POST" });
+    } catch {
+      /* cookie cleared server-side when possible */
+    }
+    currentUser = null;
+    showLogin();
+  });
+});
+
+setupForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const errorEl = document.querySelector("#setup-error");
+  hide(errorEl);
+  try {
+    const result = await api("/api/auth/setup", {
+      method: "POST",
+      body: JSON.stringify({
+        displayName: document.querySelector("#setup-name").value,
+        username: document.querySelector("#setup-username").value,
+        password: document.querySelector("#setup-password").value,
+        role: "admin",
+      }),
+    });
+    await enterApp(result.user, result.defaultView);
+  } catch (error) {
+    errorEl.textContent = error.message;
+    show(errorEl);
+  }
+});
+
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const errorEl = document.querySelector("#login-error");
+  hide(errorEl);
+  try {
+    const result = await api("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        username: document.querySelector("#login-username").value,
+        password: document.querySelector("#login-password").value,
+      }),
+    });
+    await enterApp(result.user, result.defaultView);
+  } catch (error) {
+    errorEl.textContent = error.message;
+    show(errorEl);
+  }
+});
+
+userRole.addEventListener("change", () => {
+  const role = userRole.value;
+  renderUserRights(rightsForRole(role, selectedRights()), { locked: role === "admin" });
+});
+
+document.querySelector("#add-user").addEventListener("click", () => openUserEditor());
+document.querySelector("#user-cancel").addEventListener("click", closeUserEditor);
+userEditor.addEventListener("submit", saveUser);
+userList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-user-action]");
+  if (!(button instanceof HTMLButtonElement)) return;
+  const id = Number(button.dataset.userId);
+  const user = users.find((item) => item.id === id);
+  if (button.dataset.userAction === "edit" && user) openUserEditor(user);
+  if (button.dataset.userAction === "delete") removeUser(id);
+});
+
 navBackdrop.addEventListener("click", closeSidebar);
 
 renderGamePicker();
 updateDrawPanel();
-showView(currentView);
-loadFromCloud();
+boot();
