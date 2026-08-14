@@ -203,10 +203,10 @@
                 </div>
                 <button type="submit" class="primary" id="draw-submit">Bagi grup secara acak</button>
                 <p class="hint">
-                  Campur menyeimbangkan laki-laki dan perempuan di tiap grup. Mode
-                  laki-laki atau perempuan hanya memakai peserta sesuai pilihan.
-                  Pengacakan tidak melihat cabang. Bagan sistem gugur mengikuti jumlah
-                  grup per sesi pada definisi permainan.
+                  Campur mengacak semua peserta tanpa membedakan laki-laki atau
+                  perempuan. Mode laki-laki atau perempuan hanya memakai peserta sesuai
+                  pilihan. Pengacakan tidak melihat cabang. Bagan sistem gugur mengikuti
+                  jumlah grup per sesi pada definisi permainan.
                 </p>
                 <p class="error hidden" id="config-error"></p>
               </form>
@@ -216,7 +216,7 @@
           <section class="view hidden" id="view-hasil">
             <section class="panel hidden" id="result-panel">
               <div class="panel-head">
-                <h2>Grup permainan</h2>
+                <h2 id="result-title">Grup permainan</h2>
                 <div class="actions">
                   <select id="draw-history" class="hidden" aria-label="Hasil per permainan"></select>
                   <button type="button" class="secondary" id="reshuffle">Acak ulang</button>
@@ -225,6 +225,7 @@
                 </div>
               </div>
               <p class="result-meta" id="result-meta"></p>
+              <h3 class="section-title">Daftar tim</h3>
               <div class="teams" id="teams"></div>
               <section class="bracket hidden" id="bracket"></section>
               <div class="leftover hidden" id="leftover"></div>

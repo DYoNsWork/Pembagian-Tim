@@ -290,7 +290,7 @@ async function createDraw(env, body) {
     result = divideTeams(stored.participants, {
       teamCount,
       membersPerTeam,
-      gameName: game.labelPrefix,
+      gameName: game.name,
       genderMode,
     });
   } catch (error) {
@@ -358,6 +358,7 @@ async function createDraw(env, body) {
   console.log("draw_saved", { id: drawInsert.id, teams: result.teams.length, replaced: Boolean(existing) });
 
   return {
+    ...result,
     id: drawInsert.id,
     createdAt: drawInsert.created_at,
     teamCount,
@@ -368,7 +369,6 @@ async function createDraw(env, body) {
     groupsPerSession,
     bracket,
     replaced: Boolean(existing),
-    ...result,
   };
 }
 

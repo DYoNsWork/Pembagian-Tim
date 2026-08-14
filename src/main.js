@@ -49,6 +49,7 @@ const teamsEl = document.querySelector("#teams");
 const leftoverEl = document.querySelector("#leftover");
 const bracketEl = document.querySelector("#bracket");
 const resultMeta = document.querySelector("#result-meta");
+const resultTitle = document.querySelector("#result-title");
 const cloudStatus = document.querySelector("#cloud-status");
 const drawHistory = document.querySelector("#draw-history");
 const clearBtn = document.querySelector("#clear-cloud");
@@ -111,7 +112,8 @@ function showView(name) {
     button.classList.toggle("is-active", button.dataset.view === name);
   });
   viewEyebrow.textContent = VIEWS[name].eyebrow;
-  viewTitle.textContent = VIEWS[name].title;
+  viewTitle.textContent =
+    name === "hasil" && lastResult?.gameName ? lastResult.gameName : VIEWS[name].title;
   closeSidebar();
   if (name === "pembagian") updateDrawPanel();
   if (name === "permainan" && !games.length) openGameEditor();
@@ -340,8 +342,9 @@ function renderResult(result) {
   lastResult = result;
   const modeLabel = genderModeLabel(result.genderMode);
   const pool = result.poolSize || result.used;
+  const gameTitle = result.gameName || "Grup permainan";
+  resultTitle.textContent = gameTitle;
   resultMeta.innerHTML = [
-    result.gameName ? `<span class="meta-chip">${escapeHtml(result.gameName)}</span>` : "",
     `<span class="meta-chip">${escapeHtml(modeLabel)}</span>`,
     `<span class="meta-chip">${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota</span>`,
     result.groupsPerSession ? `<span class="meta-chip">${result.groupsPerSession} grup per sesi</span>` : "",
@@ -423,52 +426,69 @@ function renderBracket(result) {
 
   const k = bracket.groupsPerSession || result.groupsPerSession || 2;
   const champion = bracket.champion;
+  const gameTitle = result.gameName || "Pertandingan";
   bracketEl.innerHTML = `
     <div class="bracket-head">
       <div>
-        <h3>Bagan sistem gugur</h3>
-        <p>${k} grup per sesi. Klik grup pemenang agar maju.</p>
+        <p class="eyebrow">Bagan sistem gugur</p>
+        <h3>${escapeHtml(gameTitle)}</h3>
+        <p>${k} grup per sesi. Klik pemenang agar maju ke babak berikutnya.</p>
       </div>
       ${
         champion
-          ? `<span class="bracket-champion">Juara: ${escapeHtml(champion.name)}</span>`
+          ? `<div class="bracket-champion"><span>Juara</span><strong>${escapeHtml(champion.name)}</strong></div>`
           : ""
       }
     </div>
-    <div class="bracket-rounds">
-      ${bracket.rounds
-        .map(
-          (round) => `
-            <section class="bracket-round">
-              <h4>${escapeHtml(round.name)}</h4>
-              ${(round.matches || [])
-                .map(
-                  (match) => `
-                    <article class="bracket-match">
-                      <p class="bracket-session">Sesi ${match.session}</p>
-                      <div class="bracket-teams">
-                        ${(match.teams || [])
-                          .map((team) => bracketSlot(team, match))
-                          .join("")}
-                      </div>
-                    </article>
-                  `,
-                )
-                .join("")}
-              ${
-                round.byeTeams?.length
-                  ? `<p class="bracket-bye">Lolos otomatis: ${round.byeTeams
-                      .map((team) => escapeHtml(team.name))
-                      .join(", ")}</p>`
-                  : ""
-              }
-            </section>
-          `,
-        )
-        .join("")}
+    <div class="bracket-board">
+      <div class="bracket-rounds">
+        ${bracket.rounds
+          .map(
+            (round) => `
+              <section class="bracket-round">
+                <h4>${escapeHtml(round.name)}</h4>
+                <div class="bracket-round-matches">
+                  ${(round.matches || [])
+                    .map(
+                      (match) => `
+                        <article class="bracket-match${match.winnerNumber ? " has-winner" : ""}">
+                          <p class="bracket-session">Sesi ${match.session}</p>
+                          <div class="bracket-teams">
+                            ${bracketTeamsHtml(match)}
+                          </div>
+                        </article>
+                      `,
+                    )
+                    .join("")}
+                  ${
+                    round.byeTeams?.length
+                      ? `<p class="bracket-bye">Lolos otomatis: ${round.byeTeams
+                          .map((team) => escapeHtml(team.name))
+                          .join(", ")}</p>`
+                      : ""
+                  }
+                </div>
+              </section>
+            `,
+          )
+          .join("")}
+      </div>
     </div>
   `;
   show(bracketEl);
+}
+
+function bracketTeamsHtml(match) {
+  const teams = match.teams || [];
+  return teams
+    .map((team, index) => {
+      const slot = bracketSlot(team, match);
+      if (teams.length === 2 && index === 0) {
+        return `${slot}<span class="bracket-vs" aria-hidden="true">VS</span>`;
+      }
+      return slot;
+    })
+    .join("");
 }
 
 function bracketSlot(team, match) {

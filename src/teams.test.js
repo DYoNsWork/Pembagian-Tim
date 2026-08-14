@@ -72,27 +72,40 @@ describe("divideTeams", () => {
     expect(usedIds).toEqual(sequential.map((p) => p.id));
   });
 
-  it("menamai grup sesuai permainan", () => {
+  it("menamai grup secara sederhana tanpa nama permainan", () => {
     const result = divideTeams(people(8), {
       teamCount: 2,
       membersPerTeam: 4,
-      gameName: "Tim Futsal",
+      gameName: "Futsal",
     });
-    expect(result.teams.map((team) => team.name)).toEqual(["Tim Futsal 1", "Tim Futsal 2"]);
+    expect(result.teams.map((team) => team.name)).toEqual(["Tim 1", "Tim 2"]);
+    expect(result.gameName).toBe("Futsal");
   });
 
-  it("menyeimbangkan jenis kelamin antar grup jika campur", () => {
-    const result = divideTeams(people(8), {
-      teamCount: 2,
-      membersPerTeam: 4,
-      genderMode: "campur",
-    });
-    for (const team of result.teams) {
-      const laki = team.members.filter((m) => m.jenisKelamin === "Laki-laki").length;
-      const perempuan = team.members.filter((m) => m.jenisKelamin === "Perempuan").length;
-      expect(laki).toBe(2);
-      expect(perempuan).toBe(2);
-    }
+  it("campur mengacak semua peserta tanpa meratakan jenis kelamin", () => {
+    const pool = [
+      ...Array.from({ length: 6 }, (_, i) => ({
+        id: `L${i + 1}`,
+        nama: `Laki ${i + 1}`,
+        jenisKelamin: "Laki-laki",
+        cabang: "Jakarta",
+      })),
+      ...Array.from({ length: 2 }, (_, i) => ({
+        id: `P${i + 1}`,
+        nama: `Perempuan ${i + 1}`,
+        jenisKelamin: "Perempuan",
+        cabang: "Bandung",
+      })),
+    ];
+    const result = divideTeams(
+      pool,
+      { teamCount: 2, membersPerTeam: 4, genderMode: "campur" },
+      () => 0.999,
+    );
+    const perempuanDiTim = (team) =>
+      team.members.filter((member) => member.jenisKelamin === "Perempuan").length;
+    expect(perempuanDiTim(result.teams[0])).toBe(0);
+    expect(perempuanDiTim(result.teams[1])).toBe(2);
   });
 
   it("hanya memakai peserta laki-laki", () => {
