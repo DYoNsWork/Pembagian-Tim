@@ -39,6 +39,7 @@ const gameEditId = document.querySelector("#game-edit-id");
 const gameNameInput = document.querySelector("#game-name");
 const gameTeamCountInput = document.querySelector("#game-team-count");
 const gameMembersInput = document.querySelector("#game-members");
+const gameGroupsPerSessionInput = document.querySelector("#game-groups-per-session");
 const gameDescriptionInput = document.querySelector("#game-description");
 const gameError = document.querySelector("#game-error");
 const needBox = document.querySelector("#need-box");
@@ -46,6 +47,7 @@ const configForm = document.querySelector("#config-form");
 const configError = document.querySelector("#config-error");
 const teamsEl = document.querySelector("#teams");
 const leftoverEl = document.querySelector("#leftover");
+const bracketEl = document.querySelector("#bracket");
 const resultMeta = document.querySelector("#result-meta");
 const cloudStatus = document.querySelector("#cloud-status");
 const drawHistory = document.querySelector("#draw-history");
@@ -156,7 +158,7 @@ function updateDrawPanel() {
   const game = selectedGame();
   const existing = draws.find((draw) => draw.gameId === selectedGameId);
   selectedGameLabel.textContent = game
-    ? `${game.name}: ${game.teamCount} grup × ${game.members} orang.`
+    ? `${game.name}: ${game.teamCount} grup × ${game.members} orang · ${game.groupsPerSession} grup per sesi.`
     : "Pilih permainan dari menu tarik-turun.";
   drawReplaceHint.classList.toggle("hidden", !existing);
   drawSubmit.textContent = existing ? "Ganti hasil acak" : "Bagi grup secara acak";
@@ -187,7 +189,7 @@ function renderGamePicker() {
       <article class="game-card" data-game-id="${escapeHtml(game.id)}">
         <div class="game-card-body">
           <span class="game-card-name">${escapeHtml(game.name)}</span>
-          <span class="game-card-size">${game.teamCount} grup · ${game.members} orang</span>
+          <span class="game-card-size">${game.teamCount} grup · ${game.members} orang · ${game.groupsPerSession} /sesi</span>
           <span class="game-card-desc">${escapeHtml(game.description || "Tidak ada penjelasan.")}</span>
         </div>
         <div class="game-card-actions">
@@ -247,12 +249,14 @@ function openGameEditor(game) {
     gameDescriptionInput.value = game.description || "";
     gameTeamCountInput.value = String(game.teamCount);
     gameMembersInput.value = String(game.members);
+    gameGroupsPerSessionInput.value = String(game.groupsPerSession || 2);
   } else {
     gameEditId.value = "";
     gameNameInput.value = "";
     gameDescriptionInput.value = "";
     gameTeamCountInput.value = "";
     gameMembersInput.value = "";
+    gameGroupsPerSessionInput.value = "2";
   }
   show(gameEditor);
   gameNameInput.focus();
@@ -338,7 +342,11 @@ function renderResult(result) {
   const modeLabel = genderModeLabel(result.genderMode);
   const when = result.createdAt ? ` Disimpan ${formatTime(result.createdAt)}.` : "";
   const pool = result.poolSize || result.used;
-  resultMeta.textContent = `${gameLabel}${modeLabel} · ${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota. ${result.used} peserta terpakai dari ${pool}.${when}`;
+  const sessionLabel = result.groupsPerSession
+    ? ` ${result.groupsPerSession} grup per sesi.`
+    : "";
+  resultMeta.textContent = `${gameLabel}${modeLabel} · ${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota.${sessionLabel} ${result.used} peserta terpakai dari ${pool}.${when}`;
+  renderBracket(result);
   teamsEl.innerHTML = result.teams
     .map(
       (team) => `
@@ -403,12 +411,79 @@ function slugify(value) {
     .replaceAll(/^-|-$/g, "") || "tim";
 }
 
+function renderBracket(result) {
+  const bracket = result?.bracket;
+  if (!bracket?.rounds?.length) {
+    hide(bracketEl);
+    bracketEl.innerHTML = "";
+    return;
+  }
+
+  const k = bracket.groupsPerSession || result.groupsPerSession || 2;
+  const champion = bracket.champion;
+  bracketEl.innerHTML = `
+    <div class="bracket-head">
+      <div>
+        <h3>Bagan sistem gugur</h3>
+        <p>${k} grup per sesi. Klik grup pemenang agar maju.</p>
+      </div>
+      ${
+        champion
+          ? `<span class="bracket-champion">Juara: ${escapeHtml(champion.name)}</span>`
+          : ""
+      }
+    </div>
+    <div class="bracket-rounds">
+      ${bracket.rounds
+        .map(
+          (round) => `
+            <section class="bracket-round">
+              <h4>${escapeHtml(round.name)}</h4>
+              ${(round.matches || [])
+                .map(
+                  (match) => `
+                    <article class="bracket-match">
+                      <p class="bracket-session">Sesi ${match.session}</p>
+                      <div class="bracket-teams">
+                        ${(match.teams || [])
+                          .map((team) => bracketSlot(team, match))
+                          .join("")}
+                      </div>
+                    </article>
+                  `,
+                )
+                .join("")}
+              ${
+                round.byeTeams?.length
+                  ? `<p class="bracket-bye">Lolos otomatis: ${round.byeTeams
+                      .map((team) => escapeHtml(team.name))
+                      .join(", ")}</p>`
+                  : ""
+              }
+            </section>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+  show(bracketEl);
+}
+
+function bracketSlot(team, match) {
+  if (!team || team.pending) {
+    return `<span class="bracket-slot is-pending">${escapeHtml(team?.label || "Menunggu pemenang")}</span>`;
+  }
+  const winner = match.winnerNumber === team.number;
+  return `<button type="button" class="bracket-slot${winner ? " is-winner" : ""}" data-match-id="${escapeHtml(match.id)}" data-winner="${team.number}">${escapeHtml(team.name)}</button>`;
+}
+
 function gamePayload() {
   return {
     name: gameNameInput.value,
     description: gameDescriptionInput.value,
     teamCount: Number(gameTeamCountInput.value),
     members: Number(gameMembersInput.value),
+    groupsPerSession: Number(gameGroupsPerSessionInput.value),
   };
 }
 
@@ -507,6 +582,7 @@ async function runDraw({ confirmReplace = true } = {}) {
         membersPerTeam: Number(membersInput.value),
         gameId: selectedGameId,
         genderMode: selectedGenderMode(),
+        groupsPerSession: selectedGame().groupsPerSession,
       }),
     });
     renderResult(result);
@@ -631,6 +707,28 @@ document.querySelector("#export-csv").addEventListener("click", () => {
 });
 
 document.querySelector("#print-result").addEventListener("click", () => window.print());
+
+bracketEl.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-match-id]");
+  if (!(button instanceof HTMLButtonElement) || !lastResult?.id) return;
+  try {
+    const updated = await api(`/api/draws/${lastResult.id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        matchId: button.dataset.matchId,
+        winnerNumber: Number(button.dataset.winner),
+      }),
+    });
+    renderResult(updated);
+    setCloudStatus(
+      updated.bracket?.champion
+        ? `Juara: ${updated.bracket.champion.name}`
+        : "Pemenang sesi disimpan",
+    );
+  } catch (error) {
+    setCloudStatus(error.message, "warn");
+  }
+});
 
 drawHistory.addEventListener("change", async () => {
   const id = drawHistory.value;

@@ -87,8 +87,9 @@
               <fieldset class="game-fieldset">
                 <p class="hint">
                   Katalog mulai kosong. Tambah permainan dengan nama, penjelasan, jumlah
-                  grup, dan jumlah peserta per grup. Saat membagi grup, pilih permainan
-                  dari menu tarik-turun di halaman Pembagian.
+                  grup, peserta per grup, dan berapa grup bertanding di setiap sesi.
+                  Saat membagi grup, pilih permainan dari menu tarik-turun di halaman
+                  Pembagian. Hasil undian sekaligus membuat bagan sistem gugur.
                 </p>
                 <div class="game-toolbar">
                   <button type="button" class="secondary" id="add-game">Tambah permainan</button>
@@ -113,6 +114,14 @@
                     Peserta per grup
                     <input id="game-members" type="number" min="1" max="99" step="1" required placeholder="4" />
                   </label>
+                  <label>
+                    Grup per sesi
+                    <input id="game-groups-per-session" type="number" min="2" max="16" step="1" required placeholder="2" />
+                  </label>
+                  <p class="hint game-editor-wide">
+                    Berapa grup bertanding di setiap sesi. 2 = satu lawan satu.
+                    Pemenang tiap sesi maju sampai juara.
+                  </p>
                   <div class="game-editor-actions">
                     <button type="submit" class="primary">Simpan permainan</button>
                     <button type="button" class="secondary" id="game-cancel">Batal</button>
@@ -179,7 +188,8 @@
                 <p class="hint">
                   Campur menyeimbangkan laki-laki dan perempuan di tiap grup. Mode
                   laki-laki atau perempuan hanya memakai peserta sesuai pilihan.
-                  Pengacakan tidak melihat cabang.
+                  Pengacakan tidak melihat cabang. Bagan sistem gugur mengikuti jumlah
+                  grup per sesi pada definisi permainan.
                 </p>
                 <p class="error hidden" id="config-error"></p>
               </form>
@@ -199,6 +209,7 @@
               </div>
               <p class="result-meta" id="result-meta"></p>
               <div class="teams" id="teams"></div>
+              <section class="bracket hidden" id="bracket"></section>
               <div class="leftover hidden" id="leftover"></div>
             </section>
             <p class="empty-games" id="result-empty">Belum ada hasil pembagian. Bagi grup di menu Pembagian.</p>
@@ -207,8 +218,9 @@
 
         <footer>
           <p>
-            Gunakan menu di samping untuk pindah halaman. Definisikan permainan, pilih
-            campur atau satu jenis kelamin, lalu bagi grup secara acak.
+            Gunakan menu di samping untuk pindah halaman. Definisikan permainan termasuk
+            grup per sesi, pilih campur atau satu jenis kelamin, lalu bagi grup secara
+            acak. Hasil undian dilengkapi bagan sistem gugur.
           </p>
         </footer>
       </div>
