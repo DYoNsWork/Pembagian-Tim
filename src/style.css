@@ -346,7 +346,7 @@ th {
 
 .game-editor {
   display: grid;
-  grid-template-columns: 1.4fr 0.8fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-top: 14px;
   padding: 14px;
@@ -409,13 +409,32 @@ th {
 }
 
 input[type="number"],
-input[type="text"] {
-  height: 46px;
+input[type="text"],
+textarea {
   border-radius: 12px;
   border: 1px solid var(--line);
   padding: 0 12px;
   font: inherit;
   background: #fff;
+}
+
+input[type="number"],
+input[type="text"] {
+  height: 46px;
+}
+
+textarea {
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 84px;
+}
+
+.empty-games {
+  margin: 0;
+  padding: 16px;
+  border: 1.5px dashed var(--line);
+  border-radius: 16px;
+  background: #fbf6ea;
 }
 
 .need-box {

@@ -1,42 +1,18 @@
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_GAMES,
-  getGame,
-  GAMES,
-  normalizeGame,
-  slugifyGameId,
-  suggestedTeamCount,
-  uniqueGameId,
-} from "./games.js";
+import { getGame, normalizeGame, slugifyGameId, uniqueGameId } from "./games.js";
 
 describe("getGame", () => {
-  it("mengembalikan futsal dengan 5 anggota", () => {
-    expect(getGame("futsal")).toMatchObject({ name: "Futsal", members: 5 });
+  it("mengembalikan null jika katalog kosong", () => {
+    expect(getGame("futsal")).toBeNull();
+    expect(getGame("futsal", [])).toBeNull();
   });
 
-  it("jatuh ke umum jika id tidak dikenal", () => {
-    expect(getGame("tidak-ada").id).toBe("umum");
-  });
-
-  it("mencari dari daftar kustom", () => {
-    const custom = [{ id: "gobak-sodor", name: "Gobak sodor", members: 8, labelPrefix: "Regu" }];
+  it("mencari dari daftar yang diberikan", () => {
+    const custom = [
+      { id: "gobak-sodor", name: "Gobak sodor", teamCount: 4, members: 8 },
+    ];
     expect(getGame("gobak-sodor", custom).name).toBe("Gobak sodor");
     expect(getGame("tidak-ada", custom).id).toBe("gobak-sodor");
-  });
-});
-
-describe("suggestedTeamCount", () => {
-  it("menghitung jumlah grup penuh dari peserta", () => {
-    expect(suggestedTeamCount(72, 5)).toBe(14);
-    expect(suggestedTeamCount(16, 4)).toBe(4);
-  });
-});
-
-describe("GAMES", () => {
-  it("memiliki id unik", () => {
-    const ids = GAMES.map((game) => game.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(DEFAULT_GAMES).toHaveLength(GAMES.length);
   });
 });
 
@@ -57,20 +33,25 @@ describe("uniqueGameId", () => {
 describe("normalizeGame", () => {
   it("menormalisasi permainan baru", () => {
     expect(
-      normalizeGame(
-        { name: "Panjat Pinang", members: 6, labelPrefix: "Regu", description: "6 orang." },
-        { existingIds: DEFAULT_GAMES.map((game) => game.id) },
-      ),
+      normalizeGame({
+        name: "Panjat Pinang",
+        description: "Lomba panjat pinang 17 Agustus.",
+        teamCount: 8,
+        members: 6,
+      }),
     ).toMatchObject({
       id: "panjat-pinang",
       name: "Panjat Pinang",
+      description: "Lomba panjat pinang 17 Agustus.",
+      teamCount: 8,
       members: 6,
-      labelPrefix: "Regu",
+      labelPrefix: "Panjat Pinang",
     });
   });
 
-  it("gagal tanpa nama atau anggota tidak valid", () => {
-    expect(() => normalizeGame({ name: "", members: 4 })).toThrow(/nama/i);
-    expect(() => normalizeGame({ name: "Tes", members: 0 })).toThrow(/anggota/i);
+  it("gagal tanpa nama, jumlah grup, atau peserta per grup", () => {
+    expect(() => normalizeGame({ name: "", teamCount: 4, members: 4 })).toThrow(/nama/i);
+    expect(() => normalizeGame({ name: "Tes", teamCount: 0, members: 4 })).toThrow(/grup/i);
+    expect(() => normalizeGame({ name: "Tes", teamCount: 2, members: 0 })).toThrow(/peserta/i);
   });
 });
