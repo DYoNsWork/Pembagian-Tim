@@ -213,6 +213,19 @@ select {
   max-width: 280px;
 }
 
+.game-select-wide {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.game-select-wide select,
+#draw-history {
+  max-width: none;
+  width: min(100%, 360px);
+}
+
 .panel {
   background: var(--card);
   border: 1px solid var(--line);
@@ -396,6 +409,11 @@ th {
   border-color: var(--green);
   background: #f4f8f4;
   box-shadow: inset 0 0 0 1px var(--green);
+}
+
+.game-card-body {
+  display: grid;
+  gap: 4px;
 }
 
 .game-card-name {

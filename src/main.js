@@ -29,6 +29,9 @@ const teamCountInput = document.querySelector("#team-count");
 const membersInput = document.querySelector("#members-per-team");
 const genderModes = document.querySelector("#gender-modes");
 const selectedGameLabel = document.querySelector("#selected-game-label");
+const drawGameSelect = document.querySelector("#draw-game");
+const drawReplaceHint = document.querySelector("#draw-replace-hint");
+const drawSubmit = document.querySelector("#draw-submit");
 const gameGrid = document.querySelector("#game-grid");
 const gamesEmpty = document.querySelector("#games-empty");
 const gameEditor = document.querySelector("#game-editor");
@@ -57,6 +60,7 @@ let games = [];
 let lastResult = null;
 let selectedGameId = "";
 let currentView = "peserta";
+let draws = [];
 
 function show(el) {
   el.classList.remove("hidden");
@@ -148,17 +152,21 @@ function updateNeed() {
 
 function updateDrawPanel() {
   updateGenderCounts();
+  renderGameSelect();
   const game = selectedGame();
+  const existing = draws.find((draw) => draw.gameId === selectedGameId);
   selectedGameLabel.textContent = game
-    ? `Permainan terpilih: ${game.name} (${game.teamCount} grup × ${game.members} orang).`
-    : "Pilih permainan di menu Permainan.";
-  const ready = Boolean(participants.length && game);
+    ? `${game.name}: ${game.teamCount} grup × ${game.members} orang.`
+    : "Pilih permainan dari menu tarik-turun.";
+  drawReplaceHint.classList.toggle("hidden", !existing);
+  drawSubmit.textContent = existing ? "Ganti hasil acak" : "Bagi grup secara acak";
+  const ready = Boolean(participants.length && games.length);
   configForm.classList.toggle("hidden", !ready);
   drawEmpty.classList.toggle("hidden", ready);
   if (!ready) {
     drawEmpty.textContent = !participants.length
       ? "Unggah peserta dulu di menu Peserta, lalu kembali ke Pembagian."
-      : "Tambah dan pilih permainan di menu Permainan, lalu kembali ke Pembagian.";
+      : "Tambah permainan di menu Permainan, lalu pilih dari menu tarik-turun di Pembagian.";
   }
   updateNeed();
 }
@@ -176,15 +184,12 @@ function renderGamePicker() {
   gameGrid.innerHTML = games
     .map(
       (game) => `
-      <article class="game-card ${game.id === selectedGameId ? "is-selected" : ""}" data-game-id="${escapeHtml(game.id)}">
-        <label>
-          <input type="radio" name="game-id" value="${escapeHtml(game.id)}" ${
-            game.id === selectedGameId ? "checked" : ""
-          } />
+      <article class="game-card" data-game-id="${escapeHtml(game.id)}">
+        <div class="game-card-body">
           <span class="game-card-name">${escapeHtml(game.name)}</span>
           <span class="game-card-size">${game.teamCount} grup · ${game.members} orang</span>
           <span class="game-card-desc">${escapeHtml(game.description || "Tidak ada penjelasan.")}</span>
-        </label>
+        </div>
         <div class="game-card-actions">
           <button type="button" class="text-btn" data-game-action="edit" data-game-id="${escapeHtml(game.id)}">Ubah</button>
           <button type="button" class="text-btn danger-text" data-game-action="delete" data-game-id="${escapeHtml(game.id)}">Hapus</button>
@@ -195,8 +200,25 @@ function renderGamePicker() {
     .join("");
 }
 
+function renderGameSelect() {
+  const current = selectedGameId;
+  drawGameSelect.innerHTML = [
+    `<option value="">Pilih permainan</option>`,
+    ...games.map(
+      (game) =>
+        `<option value="${escapeHtml(game.id)}" ${game.id === current ? "selected" : ""}>${escapeHtml(game.name)}</option>`,
+    ),
+  ].join("");
+}
+
 function applyGame(gameId) {
-  const game = getGame(gameId, games);
+  if (!gameId) {
+    selectedGameId = "";
+    renderGamePicker();
+    updateDrawPanel();
+    return;
+  }
+  const game = games.find((item) => item.id === gameId);
   if (!game) {
     selectedGameId = "";
     renderGamePicker();
@@ -420,41 +442,49 @@ async function removeGame(id) {
   if (!confirm(`Hapus permainan “${game.name}”?`)) return;
   try {
     const result = await api(`/api/games/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (lastResult?.gameId === id) {
+      lastResult = null;
+      hide(resultPanel);
+      show(resultEmpty);
+    }
     setGames(result.games, { keepSelection: selectedGameId !== id });
     applyGame(selectedGameId);
     closeGameEditor();
     setCloudStatus(`Permainan ${game.name} dihapus`);
+    await refreshDrawHistory();
   } catch (error) {
     setCloudStatus(error.message, "warn");
   }
 }
 
 async function refreshDrawHistory(selectedId) {
-  const { draws } = await api("/api/draws");
+  const data = await api("/api/draws");
+  draws = data.draws || [];
   if (!draws.length) {
     hide(drawHistory);
     drawHistory.innerHTML = "";
+    updateDrawPanel();
     return;
   }
 
   drawHistory.innerHTML = `
-    <option value="">Pilih undian tersimpan</option>
+    <option value="">Pilih permainan</option>
     ${draws
       .map(
         (draw) =>
-          `<option value="${draw.id}" ${String(draw.id) === String(selectedId) ? "selected" : ""}>Undian #${draw.id} · ${escapeHtml(draw.gameName || "Permainan")} · ${escapeHtml(genderModeLabel(draw.genderMode))} · ${draw.teamCount}×${draw.membersPerTeam} · ${escapeHtml(draw.createdAt)}</option>`,
+          `<option value="${draw.id}" ${String(draw.id) === String(selectedId) ? "selected" : ""}>${escapeHtml(draw.gameName || "Permainan")} · ${escapeHtml(genderModeLabel(draw.genderMode))} · ${draw.teamCount}×${draw.membersPerTeam}</option>`,
       )
       .join("")}
   `;
   show(drawHistory);
+  updateDrawPanel();
 }
 
-async function runDraw() {
+async function runDraw({ confirmReplace = true } = {}) {
   hide(configError);
   if (!selectedGame()) {
-    configError.textContent = "Buat dan pilih jenis permainan dulu.";
+    configError.textContent = "Pilih permainan dari menu tarik-turun.";
     show(configError);
-    showView("permainan");
     return;
   }
   if (!participants.length) {
@@ -462,6 +492,12 @@ async function runDraw() {
     show(configError);
     showView("peserta");
     return;
+  }
+  const existing = draws.find((draw) => draw.gameId === selectedGameId);
+  if (confirmReplace && existing) {
+    if (!confirm(`Sudah ada hasil untuk “${selectedGame().name}”. Ganti dengan acakan baru?`)) {
+      return;
+    }
   }
   try {
     const result = await api("/api/draws", {
@@ -474,7 +510,11 @@ async function runDraw() {
       }),
     });
     renderResult(result);
-    setCloudStatus(`Grup ${result.gameName} #${result.id} tersimpan di Cloudflare D1`);
+    setCloudStatus(
+      result.replaced
+        ? `Hasil ${result.gameName} diganti dengan acakan baru`
+        : `Grup ${result.gameName} tersimpan di Cloudflare D1`,
+    );
     await refreshDrawHistory(result.id);
     showView("hasil");
   } catch (error) {
@@ -544,13 +584,6 @@ fileInput.addEventListener("change", () => {
   }
 });
 
-gameGrid.addEventListener("change", (event) => {
-  const input = event.target;
-  if (input instanceof HTMLInputElement && input.name === "game-id") {
-    applyGame(input.value);
-  }
-});
-
 gameGrid.addEventListener("click", (event) => {
   const button = event.target.closest("[data-game-action]");
   if (!(button instanceof HTMLButtonElement)) return;
@@ -570,6 +603,9 @@ document.querySelector("#game-cancel").addEventListener("click", closeGameEditor
 gameEditor.addEventListener("submit", saveGame);
 
 genderModes.addEventListener("change", updateDrawPanel);
+drawGameSelect.addEventListener("change", () => {
+  applyGame(drawGameSelect.value);
+});
 teamCountInput.addEventListener("input", updateNeed);
 membersInput.addEventListener("input", updateNeed);
 
@@ -579,8 +615,7 @@ configForm.addEventListener("submit", (event) => {
 });
 
 document.querySelector("#reshuffle").addEventListener("click", () => {
-  showView("pembagian");
-  runDraw();
+  runDraw({ confirmReplace: false });
 });
 
 document.querySelector("#export-csv").addEventListener("click", () => {
@@ -617,6 +652,7 @@ clearBtn.addEventListener("click", async () => {
     await api("/api/participants", { method: "DELETE" });
     participants = [];
     lastResult = null;
+    draws = [];
     hide(dataPanel);
     hide(resultPanel);
     show(resultEmpty);

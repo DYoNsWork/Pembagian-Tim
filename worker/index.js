@@ -1,5 +1,5 @@
 import { divideTeams, normalizeGenderMode } from "../src/teams.js";
-import { chunk, groupDrawMembers, personFromRow } from "../src/draws.js";
+import { chunk, extraDrawIds, groupDrawMembers, personFromRow } from "../src/draws.js";
 import {
   gameFromRow,
   getGame,
@@ -30,6 +30,7 @@ export default {
       await env.DB.batch(SCHEMA_STATEMENTS.map((sql) => env.DB.prepare(sql)));
       await ensureDrawGameColumns(env);
       await ensureGameSchema(env);
+      await ensureOneDrawPerGame(env);
       return await handleApi(request, env, url);
     } catch (error) {
       const status = Number(error.status) || 500;
@@ -157,7 +158,7 @@ async function saveParticipants(env, body) {
 
 async function listDraws(env) {
   const { results } = await env.DB.prepare(
-    "SELECT id, team_count, members_per_team, created_at, game_id, game_name, gender_mode FROM draws ORDER BY id DESC LIMIT 20",
+    "SELECT id, team_count, members_per_team, created_at, game_id, game_name, gender_mode FROM draws ORDER BY id DESC LIMIT 80",
   ).all();
 
   return {
@@ -240,6 +241,10 @@ async function deleteGame(env, id) {
     throw Object.assign(new Error("Jenis permainan tidak ditemukan."), { status: 404 });
   }
 
+  const { results } = await env.DB.prepare("SELECT id FROM draws WHERE game_id = ?").bind(id).all();
+  for (const row of results || []) {
+    await deleteDraw(env, row.id);
+  }
   await env.DB.prepare("DELETE FROM games WHERE id = ?").bind(id).run();
   console.log("game_deleted", { id });
   return { ok: true, deletedId: id, games: await listGames(env) };
@@ -270,6 +275,11 @@ async function createDraw(env, body) {
     });
   } catch (error) {
     throw Object.assign(error, { status: 400 });
+  }
+
+  const existing = await env.DB.prepare("SELECT id FROM draws WHERE game_id = ?").bind(game.id).first();
+  if (existing) {
+    await deleteDraw(env, existing.id);
   }
 
   const drawInsert = await env.DB.prepare(
@@ -315,7 +325,7 @@ async function createDraw(env, body) {
     await env.DB.batch(group);
   }
 
-  console.log("draw_saved", { id: drawInsert.id, teams: result.teams.length });
+  console.log("draw_saved", { id: drawInsert.id, teams: result.teams.length, replaced: Boolean(existing) });
 
   return {
     id: drawInsert.id,
@@ -325,6 +335,7 @@ async function createDraw(env, body) {
     gameId: game.id,
     gameName: game.name,
     genderMode,
+    replaced: Boolean(existing),
     ...result,
   };
 }
@@ -356,6 +367,19 @@ async function getDraw(env, id) {
     needed: draw.team_count * draw.members_per_team,
     ...grouped,
   };
+}
+
+async function deleteDraw(env, id) {
+  await env.DB.prepare("DELETE FROM draw_members WHERE draw_id = ?").bind(id).run();
+  await env.DB.prepare("DELETE FROM draws WHERE id = ?").bind(id).run();
+}
+
+async function ensureOneDrawPerGame(env) {
+  const { results } = await env.DB.prepare("SELECT id, game_id FROM draws ORDER BY id DESC").all();
+  for (const id of extraDrawIds(results)) {
+    await deleteDraw(env, id);
+  }
+  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_draws_game_id ON draws(game_id)").run();
 }
 
 async function ensureGameSchema(env) {
