@@ -38,6 +38,7 @@ describe("normalizeGame", () => {
         description: "Lomba panjat pinang 17 Agustus.",
         teamCount: 8,
         members: 6,
+        groupsPerSession: 2,
       }),
     ).toMatchObject({
       id: "panjat-pinang",
@@ -45,13 +46,21 @@ describe("normalizeGame", () => {
       description: "Lomba panjat pinang 17 Agustus.",
       teamCount: 8,
       members: 6,
+      groupsPerSession: 2,
       labelPrefix: "Panjat Pinang",
     });
+  });
+
+  it("mengisi grup per sesi 2 jika tidak disebutkan", () => {
+    expect(normalizeGame({ name: "Tes", teamCount: 4, members: 4 }).groupsPerSession).toBe(2);
   });
 
   it("gagal tanpa nama, jumlah grup, atau peserta per grup", () => {
     expect(() => normalizeGame({ name: "", teamCount: 4, members: 4 })).toThrow(/nama/i);
     expect(() => normalizeGame({ name: "Tes", teamCount: 0, members: 4 })).toThrow(/grup/i);
     expect(() => normalizeGame({ name: "Tes", teamCount: 2, members: 0 })).toThrow(/peserta/i);
+    expect(() =>
+      normalizeGame({ name: "Tes", teamCount: 4, members: 4, groupsPerSession: 1 }),
+    ).toThrow(/sesi/i);
   });
 });

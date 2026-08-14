@@ -4,8 +4,10 @@ import {
   gameFromRow,
   getGame,
   MAX_GAMES,
+  MAX_GROUPS_PER_SESSION,
   normalizeGame,
 } from "../src/games.js";
+import { buildKnockoutBracket, parseBracket, setMatchWinner } from "../src/bracket.js";
 
 const SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS participants (id INTEGER PRIMARY KEY AUTOINCREMENT, nama TEXT NOT NULL, jenis_kelamin TEXT NOT NULL, cabang TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
@@ -13,7 +15,7 @@ const SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS draws (id INTEGER PRIMARY KEY AUTOINCREMENT, team_count INTEGER NOT NULL, members_per_team INTEGER NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
   `CREATE TABLE IF NOT EXISTS draw_members (id INTEGER PRIMARY KEY AUTOINCREMENT, draw_id INTEGER NOT NULL, team_number INTEGER NOT NULL, team_name TEXT NOT NULL, nama TEXT NOT NULL, jenis_kelamin TEXT NOT NULL, cabang TEXT NOT NULL, FOREIGN KEY (draw_id) REFERENCES draws(id))`,
   `CREATE INDEX IF NOT EXISTS idx_draw_members_draw_id ON draw_members(draw_id)`,
-  `CREATE TABLE IF NOT EXISTS games (id TEXT PRIMARY KEY, name TEXT NOT NULL, members INTEGER NOT NULL, team_count INTEGER NOT NULL DEFAULT 1, description TEXT NOT NULL DEFAULT '', label_prefix TEXT NOT NULL, is_builtin INTEGER NOT NULL DEFAULT 0, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
+  `CREATE TABLE IF NOT EXISTS games (id TEXT PRIMARY KEY, name TEXT NOT NULL, members INTEGER NOT NULL, team_count INTEGER NOT NULL DEFAULT 1, groups_per_session INTEGER NOT NULL DEFAULT 2, description TEXT NOT NULL DEFAULT '', label_prefix TEXT NOT NULL, is_builtin INTEGER NOT NULL DEFAULT 0, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
 ];
 
 const MAX_PARTICIPANTS = 2000;
@@ -97,6 +99,11 @@ async function handleApi(request, env, url) {
     return json(draw);
   }
 
+  if (drawMatch && request.method === "PUT") {
+    const body = await readJson(request);
+    return json(await updateDrawBracket(env, Number(drawMatch[1]), body));
+  }
+
   return json({ error: "Endpoint tidak ditemukan." }, 404);
 }
 
@@ -176,7 +183,7 @@ async function listDraws(env) {
 
 async function listGames(env) {
   const { results } = await env.DB.prepare(
-    "SELECT id, name, members, team_count, description, label_prefix, is_builtin, sort_order FROM games ORDER BY sort_order ASC, name ASC",
+    "SELECT id, name, members, team_count, groups_per_session, description, label_prefix, is_builtin, sort_order FROM games ORDER BY sort_order ASC, name ASC",
   ).all();
   return (results || []).map(gameFromRow);
 }
@@ -190,13 +197,14 @@ async function createGame(env, body) {
   const parsed = normalizeGame(body, { existingIds: games.map((game) => game.id) });
   const sortOrder = games.reduce((max, game) => Math.max(max, game.sortOrder), 0) + 1;
   await env.DB.prepare(
-    "INSERT INTO games (id, name, members, team_count, description, label_prefix, is_builtin, sort_order) VALUES (?, ?, ?, ?, ?, ?, 0, ?)",
+    "INSERT INTO games (id, name, members, team_count, groups_per_session, description, label_prefix, is_builtin, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)",
   )
     .bind(
       parsed.id,
       parsed.name,
       parsed.members,
       parsed.teamCount,
+      parsed.groupsPerSession,
       parsed.description,
       parsed.labelPrefix,
       sortOrder,
@@ -217,12 +225,13 @@ async function updateGame(env, id, body) {
 
   const parsed = normalizeGame(body, { id, existingIds: games.map((game) => game.id) });
   await env.DB.prepare(
-    "UPDATE games SET name = ?, members = ?, team_count = ?, description = ?, label_prefix = ? WHERE id = ?",
+    "UPDATE games SET name = ?, members = ?, team_count = ?, groups_per_session = ?, description = ?, label_prefix = ? WHERE id = ?",
   )
     .bind(
       parsed.name,
       parsed.members,
       parsed.teamCount,
+      parsed.groupsPerSession,
       parsed.description,
       parsed.labelPrefix,
       id,
@@ -264,6 +273,17 @@ async function createDraw(env, body) {
   const teamCount = Number(body?.teamCount) || game.teamCount;
   const membersPerTeam = Number(body?.membersPerTeam) || game.members;
   const genderMode = normalizeGenderMode(body?.genderMode);
+  const groupsPerSession = Number(body?.groupsPerSession) || game.groupsPerSession || 2;
+  if (
+    !Number.isInteger(groupsPerSession) ||
+    groupsPerSession < 2 ||
+    groupsPerSession > MAX_GROUPS_PER_SESSION
+  ) {
+    throw Object.assign(
+      new Error(`Grup per sesi harus bilangan 2–${MAX_GROUPS_PER_SESSION}.`),
+      { status: 400 },
+    );
+  }
   const stored = await listParticipants(env);
   let result;
   try {
@@ -277,15 +297,25 @@ async function createDraw(env, body) {
     throw Object.assign(error, { status: 400 });
   }
 
+  const bracket = buildKnockoutBracket(result.teams, groupsPerSession);
+
   const existing = await env.DB.prepare("SELECT id FROM draws WHERE game_id = ?").bind(game.id).first();
   if (existing) {
     await deleteDraw(env, existing.id);
   }
 
   const drawInsert = await env.DB.prepare(
-    "INSERT INTO draws (team_count, members_per_team, game_id, game_name, gender_mode) VALUES (?, ?, ?, ?, ?) RETURNING id, created_at",
+    "INSERT INTO draws (team_count, members_per_team, game_id, game_name, gender_mode, groups_per_session, bracket) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, created_at",
   )
-    .bind(teamCount, membersPerTeam, game.id, game.name, genderMode)
+    .bind(
+      teamCount,
+      membersPerTeam,
+      game.id,
+      game.name,
+      genderMode,
+      groupsPerSession,
+      JSON.stringify(bracket),
+    )
     .first();
 
   const memberStmt = env.DB.prepare(
@@ -335,6 +365,8 @@ async function createDraw(env, body) {
     gameId: game.id,
     gameName: game.name,
     genderMode,
+    groupsPerSession,
+    bracket,
     replaced: Boolean(existing),
     ...result,
   };
@@ -342,7 +374,7 @@ async function createDraw(env, body) {
 
 async function getDraw(env, id) {
   const draw = await env.DB.prepare(
-    "SELECT id, team_count, members_per_team, created_at, game_id, game_name, gender_mode FROM draws WHERE id = ?",
+    "SELECT id, team_count, members_per_team, created_at, game_id, game_name, gender_mode, groups_per_session, bracket FROM draws WHERE id = ?",
   )
     .bind(id)
     .first();
@@ -356,6 +388,11 @@ async function getDraw(env, id) {
     .all();
 
   const grouped = groupDrawMembers(results);
+  const groupsPerSession = Number(draw.groups_per_session) || 2;
+  let bracket = parseBracket(draw.bracket);
+  if (!bracket && grouped.teams.length) {
+    bracket = buildKnockoutBracket(grouped.teams, groupsPerSession);
+  }
   return {
     id: draw.id,
     createdAt: draw.created_at,
@@ -364,9 +401,31 @@ async function getDraw(env, id) {
     gameId: draw.game_id || "",
     gameName: draw.game_name || "Permainan",
     genderMode: normalizeGenderMode(draw.gender_mode),
+    groupsPerSession,
+    bracket,
     needed: draw.team_count * draw.members_per_team,
     ...grouped,
   };
+}
+
+async function updateDrawBracket(env, id, body) {
+  const draw = await getDraw(env, id);
+  if (!draw) {
+    throw Object.assign(new Error("Hasil undian tidak ditemukan."), { status: 404 });
+  }
+  if (!draw.bracket) {
+    throw Object.assign(new Error("Bagan pertandingan belum tersedia."), { status: 400 });
+  }
+  let bracket;
+  try {
+    bracket = setMatchWinner(draw.bracket, body?.matchId, body?.winnerNumber);
+  } catch (error) {
+    throw Object.assign(error, { status: error.status || 400 });
+  }
+  await env.DB.prepare("UPDATE draws SET bracket = ? WHERE id = ?")
+    .bind(JSON.stringify(bracket), id)
+    .run();
+  return { ...draw, bracket };
 }
 
 async function deleteDraw(env, id) {
@@ -387,6 +446,11 @@ async function ensureGameSchema(env) {
   const columns = new Set((results || []).map((row) => row.name));
   if (!columns.has("team_count")) {
     await env.DB.prepare("ALTER TABLE games ADD COLUMN team_count INTEGER NOT NULL DEFAULT 1").run();
+  }
+  if (!columns.has("groups_per_session")) {
+    await env.DB.prepare(
+      "ALTER TABLE games ADD COLUMN groups_per_session INTEGER NOT NULL DEFAULT 2",
+    ).run();
   }
 
   const cleared = await env.DB.prepare("SELECT value FROM meta WHERE key = ?")
@@ -412,6 +476,12 @@ async function ensureDrawGameColumns(env) {
   }
   if (!columns.has("gender_mode")) {
     await env.DB.prepare("ALTER TABLE draws ADD COLUMN gender_mode TEXT").run();
+  }
+  if (!columns.has("groups_per_session")) {
+    await env.DB.prepare("ALTER TABLE draws ADD COLUMN groups_per_session INTEGER").run();
+  }
+  if (!columns.has("bracket")) {
+    await env.DB.prepare("ALTER TABLE draws ADD COLUMN bracket TEXT").run();
   }
 }
 

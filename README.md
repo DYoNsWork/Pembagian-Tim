@@ -20,13 +20,13 @@ Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disi
 
 2. Unggah CSV di aplikasi. Data langsung tersimpan di D1, jadi tetap ada setelah halaman di-refresh.
 
-3. Di menu **Permainan**, tambah jenis permainan: nama, penjelasan, jumlah grup, dan peserta per grup.
+3. Di menu **Permainan**, tambah jenis permainan: nama, penjelasan, jumlah grup, peserta per grup, dan **grup per sesi** (berapa grup bertanding di setiap sesi; 2 = satu lawan satu).
 
 4. Di menu **Pembagian**, pilih permainan dari menu tarik-turun, lalu pilih komposisi grup: **campur**, **laki-laki saja**, atau **perempuan saja**. Setiap jenis lomba hanya punya **satu hasil acak**; membagi lagi mengganti hasil sebelumnya.
 
-   Contoh: permainan “Gobak sodor” dengan 8 grup × 8 orang membutuhkan 64 peserta dari kumpulan yang dipilih. Jika lebih, sisanya masuk cadangan. Jika kurang, aplikasi menampilkan peringatan.
+   Contoh: permainan “Gobak sodor” dengan 8 grup × 8 orang membutuhkan 64 peserta dari kumpulan yang dipilih. Jika lebih, sisanya masuk cadangan. Jika kurang, aplikasi menampilkan peringatan. Dengan 2 grup per sesi, bagan gugur membuat 4 pertandingan babak awal, lalu semifinal dan final.
 
-5. Hasil undian ada di menu **Hasil**, satu per permainan. Bisa diganti dengan acak ulang, diunduh CSV, atau dicetak.
+5. Hasil undian ada di menu **Hasil**, satu per permainan: daftar grup plus **bagan sistem gugur**. Klik grup pemenang di setiap sesi agar maju ke babak berikutnya. Bisa diganti dengan acak ulang, diunduh CSV, atau dicetak.
 
 Gunakan **menu samping** untuk pindah halaman: Peserta, Permainan, Pembagian, dan Hasil.
 
@@ -164,4 +164,4 @@ Setelah itu, setiap **push ke branch yang terhubung** akan di-deploy Cloudflare 
 1. Buka URL Workers.
 2. Unggah CSV peserta (`nama, jenis kelamin, nama cabang`).
 3. Data tersimpan di D1 Cloudflare, tidak hilang saat refresh.
-4. Tambah permainan, pilih campur/laki-laki/perempuan, lalu bagi grup. Hasil ada di menu Hasil.
+4. Tambah permainan (termasuk grup per sesi), pilih campur/laki-laki/perempuan, lalu bagi grup. Hasil dan bagan gugur ada di menu Hasil.

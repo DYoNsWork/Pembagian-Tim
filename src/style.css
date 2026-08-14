@@ -457,7 +457,7 @@ th {
 
 .game-editor {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-top: 14px;
   padding: 14px;
@@ -695,6 +695,120 @@ button {
   background: #f7f0e2;
 }
 
+.bracket {
+  margin-top: 22px;
+}
+
+.bracket-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.bracket-head h3 {
+  margin: 0;
+  font-family: Fraunces, Georgia, serif;
+  font-size: 1.2rem;
+}
+
+.bracket-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.bracket-champion {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f3e4c4;
+  color: var(--green-dark);
+  font-weight: 700;
+}
+
+.bracket-rounds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.bracket-round {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fffdf8;
+}
+
+.bracket-round h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.bracket-match {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+
+.bracket-session {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.bracket-teams {
+  display: grid;
+  gap: 6px;
+}
+
+.bracket-slot {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fbf6ea;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+}
+
+button.bracket-slot {
+  cursor: pointer;
+}
+
+button.bracket-slot:hover {
+  border-color: var(--green);
+}
+
+.bracket-slot.is-winner {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.bracket-slot.is-pending {
+  color: var(--muted);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.bracket-bye {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .gender {
   display: inline-block;
   font-size: 0.75rem;
@@ -795,5 +909,13 @@ footer {
 
   .teams {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bracket-rounds {
+    grid-template-columns: 1fr;
+  }
+
+  button.bracket-slot {
+    cursor: default;
   }
 }

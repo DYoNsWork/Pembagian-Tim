@@ -3,6 +3,7 @@ export const MAX_GAME_NAME = 80;
 export const MAX_GAME_DESCRIPTION = 500;
 export const MAX_TEAMS = 200;
 export const MAX_MEMBERS = 99;
+export const MAX_GROUPS_PER_SESSION = 16;
 
 export function getGame(id, games = []) {
   const list = Array.isArray(games) ? games : [];
@@ -35,6 +36,9 @@ export function normalizeGame(input, { id, existingIds = [] } = {}) {
   const description = String(input?.description || "").trim();
   const teamCount = Number(input?.teamCount ?? input?.team_count);
   const members = Number(input?.members);
+  const groupsPerSession = Number(
+    input?.groupsPerSession ?? input?.groups_per_session ?? input?.grupPerSesi ?? 2,
+  );
   const labelPrefix = name || "Tim";
   const gameId = id || uniqueGameId(name, existingIds);
 
@@ -59,6 +63,12 @@ export function normalizeGame(input, { id, existingIds = [] } = {}) {
       status: 400,
     });
   }
+  if (!Number.isInteger(groupsPerSession) || groupsPerSession < 2 || groupsPerSession > MAX_GROUPS_PER_SESSION) {
+    throw Object.assign(
+      new Error(`Grup per sesi harus bilangan 2–${MAX_GROUPS_PER_SESSION}.`),
+      { status: 400 },
+    );
+  }
 
   return {
     id: gameId,
@@ -66,6 +76,7 @@ export function normalizeGame(input, { id, existingIds = [] } = {}) {
     description,
     teamCount,
     members,
+    groupsPerSession,
     labelPrefix,
   };
 }
@@ -77,6 +88,7 @@ export function gameFromRow(row) {
     description: row.description || "",
     teamCount: Number(row.team_count ?? row.teamCount) || 1,
     members: Number(row.members),
+    groupsPerSession: Number(row.groups_per_session ?? row.groupsPerSession) || 2,
     labelPrefix: row.label_prefix || row.labelPrefix || row.name || "Tim",
     sortOrder: Number(row.sort_order) || 0,
   };
