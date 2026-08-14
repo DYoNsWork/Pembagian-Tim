@@ -18,10 +18,9 @@
         <p class="eyebrow">Pengundian peserta</p>
         <h1>Pembagian Grup Permainan</h1>
         <p class="lede">
-          Unggah daftar peserta dari CSV, pilih atau buat jenis permainan, lalu sistem
-          membagi grup sesuai ukuran pertandingan dan mengacak semua nama tanpa
-          membedakan cabang. Data peserta, permainan, dan hasil undian disimpan di
-          Cloudflare D1.
+          Unggah daftar peserta dari CSV, lalu definisikan permainan: nama, penjelasan,
+          jumlah grup, dan peserta per grup. Sistem mengacak nama tanpa membedakan
+          cabang. Data disimpan di Cloudflare D1.
         </p>
         <p class="cloud-status" id="cloud-status">Menghubungkan ke Cloudflare D1…</p>
       </header>
@@ -74,32 +73,31 @@
           <fieldset class="game-fieldset">
             <legend>Jenis permainan</legend>
             <p class="hint">
-              Tambah, ubah, atau hapus permainan sesuai kebutuhan acara. Pilih satu
-              kartu agar jumlah anggota mengikuti aturan, lalu sesuaikan jumlah grup
-              jika perlu.
+              Katalog mulai kosong. Tambah permainan dengan nama, penjelasan, jumlah
+              grup, dan jumlah peserta per grup.
             </p>
             <div class="game-toolbar">
               <button type="button" class="secondary" id="add-game">Tambah permainan</button>
-              <button type="button" class="secondary" id="restore-games">Pulihkan bawaan</button>
             </div>
-            <div class="game-grid" id="game-grid" role="radiogroup" aria-label="Jenis permainan"></div>
+            <p class="empty-games" id="games-empty">Belum ada permainan. Klik <strong>Tambah permainan</strong> untuk mulai.</p>
+            <div class="game-grid hidden" id="game-grid" role="radiogroup" aria-label="Jenis permainan"></div>
             <form id="game-editor" class="game-editor hidden">
               <input id="game-edit-id" type="hidden" />
-              <label>
+              <label class="game-editor-wide">
                 Nama permainan
                 <input id="game-name" type="text" maxlength="80" required placeholder="Contoh: Gobak sodor" />
               </label>
-              <label>
-                Anggota per grup
-                <input id="game-members" type="number" min="1" max="99" step="1" required />
-              </label>
-              <label>
-                Awalan nama grup
-                <input id="game-prefix" type="text" maxlength="40" required placeholder="Regu" />
-              </label>
               <label class="game-editor-wide">
-                Deskripsi
-                <input id="game-description" type="text" maxlength="200" placeholder="Keterangan singkat (opsional)" />
+                Penjelasan
+                <textarea id="game-description" maxlength="500" rows="3" placeholder="Tuliskan aturan atau keterangan permainan"></textarea>
+              </label>
+              <label>
+                Jumlah grup
+                <input id="game-team-count" type="number" min="1" max="200" step="1" required placeholder="16" />
+              </label>
+              <label>
+                Peserta per grup
+                <input id="game-members" type="number" min="1" max="99" step="1" required placeholder="4" />
               </label>
               <div class="game-editor-actions">
                 <button type="submit" class="primary">Simpan permainan</button>
@@ -153,9 +151,9 @@
 
       <footer>
         <p>
-          Grup dipakai untuk pertandingan. Jenis permainan bisa ditambah, diubah, atau
-          dihapus. Pembagian bersifat acak; cabang hanya ditampilkan. Data disimpan di
-          Cloudflare D1.
+          Grup dipakai untuk pertandingan. Definisikan sendiri jenis permainan (nama,
+          penjelasan, jumlah grup, peserta per grup). Pembagian bersifat acak; cabang
+          hanya ditampilkan. Data disimpan di Cloudflare D1.
         </p>
       </footer>
     </div>

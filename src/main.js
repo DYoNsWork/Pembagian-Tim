@@ -1,6 +1,6 @@
 import { parseParticipantsCsv, summarizeParticipants } from "./csv.js";
 import { teamsToCsv } from "./teams.js";
-import { DEFAULT_GAMES, getGame, suggestedTeamCount } from "./games.js";
+import { getGame } from "./games.js";
 import { api } from "./api.js";
 
 const fileInput = document.querySelector("#file-input");
@@ -15,11 +15,12 @@ const teamCountInput = document.querySelector("#team-count");
 const membersInput = document.querySelector("#members-per-team");
 const balanceGenderInput = document.querySelector("#balance-gender");
 const gameGrid = document.querySelector("#game-grid");
+const gamesEmpty = document.querySelector("#games-empty");
 const gameEditor = document.querySelector("#game-editor");
 const gameEditId = document.querySelector("#game-edit-id");
 const gameNameInput = document.querySelector("#game-name");
+const gameTeamCountInput = document.querySelector("#game-team-count");
 const gameMembersInput = document.querySelector("#game-members");
-const gamePrefixInput = document.querySelector("#game-prefix");
 const gameDescriptionInput = document.querySelector("#game-description");
 const gameError = document.querySelector("#game-error");
 const needBox = document.querySelector("#need-box");
@@ -33,9 +34,9 @@ const drawHistory = document.querySelector("#draw-history");
 const clearBtn = document.querySelector("#clear-cloud");
 
 let participants = [];
-let games = [...DEFAULT_GAMES];
+let games = [];
 let lastResult = null;
-let selectedGameId = "umum";
+let selectedGameId = "";
 
 function show(el) {
   el.classList.remove("hidden");
@@ -56,8 +57,10 @@ function selectedGame() {
 }
 
 function setGames(list, { keepSelection = true } = {}) {
-  games = Array.isArray(list) && list.length ? list : [...DEFAULT_GAMES];
-  if (!keepSelection || !games.some((game) => game.id === selectedGameId)) {
+  games = Array.isArray(list) ? list : [];
+  if (!games.length) {
+    selectedGameId = "";
+  } else if (!keepSelection || !games.some((game) => game.id === selectedGameId)) {
     selectedGameId = games[0].id;
   }
   renderGamePicker();
@@ -70,11 +73,21 @@ function updateNeed() {
   const needed = teams * size;
   const enough = Number.isInteger(needed) && needed > 0 && participants.length >= needed;
   const game = selectedGame();
-  needBox.innerHTML = `${escapeHtml(game.name)}: <strong>${needed || 0} orang</strong> dari ${participants.length} peserta`;
+  const label = game ? game.name : "Belum ada permainan";
+  needBox.innerHTML = `${escapeHtml(label)}: <strong>${needed || 0} orang</strong> dari ${participants.length} peserta`;
   needBox.style.color = enough ? "inherit" : "var(--danger)";
 }
 
 function renderGamePicker() {
+  if (!games.length) {
+    show(gamesEmpty);
+    hide(gameGrid);
+    gameGrid.innerHTML = "";
+    return;
+  }
+
+  hide(gamesEmpty);
+  show(gameGrid);
   gameGrid.innerHTML = games
     .map(
       (game) => `
@@ -84,8 +97,8 @@ function renderGamePicker() {
             game.id === selectedGameId ? "checked" : ""
           } />
           <span class="game-card-name">${escapeHtml(game.name)}</span>
-          <span class="game-card-size">${game.members} orang / grup</span>
-          <span class="game-card-desc">${escapeHtml(game.description)}</span>
+          <span class="game-card-size">${game.teamCount} grup · ${game.members} orang</span>
+          <span class="game-card-desc">${escapeHtml(game.description || "Tidak ada penjelasan.")}</span>
         </label>
         <div class="game-card-actions">
           <button type="button" class="text-btn" data-game-action="edit" data-game-id="${escapeHtml(game.id)}">Ubah</button>
@@ -97,13 +110,17 @@ function renderGamePicker() {
     .join("");
 }
 
-function applyGame(gameId, { suggestTeams = true } = {}) {
-  selectedGameId = gameId;
-  const game = selectedGame();
-  membersInput.value = String(game.members);
-  if (suggestTeams && participants.length) {
-    teamCountInput.value = String(suggestedTeamCount(participants.length, game.members));
+function applyGame(gameId) {
+  const game = getGame(gameId, games);
+  if (!game) {
+    selectedGameId = "";
+    renderGamePicker();
+    updateNeed();
+    return;
   }
+  selectedGameId = game.id;
+  teamCountInput.value = String(game.teamCount);
+  membersInput.value = String(game.members);
   renderGamePicker();
   updateNeed();
 }
@@ -117,20 +134,18 @@ function closeGameEditor() {
 
 function openGameEditor(game) {
   hide(gameError);
-  delete gamePrefixInput.dataset.touched;
   if (game) {
     gameEditId.value = game.id;
     gameNameInput.value = game.name;
-    gameMembersInput.value = String(game.members);
-    gamePrefixInput.value = game.labelPrefix;
     gameDescriptionInput.value = game.description || "";
-    gamePrefixInput.dataset.touched = "1";
+    gameTeamCountInput.value = String(game.teamCount);
+    gameMembersInput.value = String(game.members);
   } else {
     gameEditId.value = "";
     gameNameInput.value = "";
-    gameMembersInput.value = "4";
-    gamePrefixInput.value = "Tim";
     gameDescriptionInput.value = "";
+    gameTeamCountInput.value = "";
+    gameMembersInput.value = "";
   }
   show(gameEditor);
   gameNameInput.focus();
@@ -186,7 +201,7 @@ function showParticipantData(list, name, { saved = true } = {}) {
   renderParticipants(list);
   applyGame(selectedGameId);
   show(dataPanel);
-  show(configForm);
+  if (games.length) show(configForm);
   show(clearBtn);
   hide(configError);
 }
@@ -253,7 +268,9 @@ function renderResult(result) {
   if (result.gameId) {
     selectedGameId = games.some((game) => game.id === result.gameId) ? result.gameId : selectedGameId;
     teamCountInput.value = String(result.teamCount || result.teams.length);
-    membersInput.value = String(result.membersPerTeam || result.teams[0]?.members.length || selectedGame().members);
+    membersInput.value = String(
+      result.membersPerTeam || result.teams[0]?.members.length || selectedGame()?.members || 1,
+    );
     renderGamePicker();
     updateNeed();
   }
@@ -277,9 +294,9 @@ function slugify(value) {
 function gamePayload() {
   return {
     name: gameNameInput.value,
-    members: Number(gameMembersInput.value),
-    labelPrefix: gamePrefixInput.value,
     description: gameDescriptionInput.value,
+    teamCount: Number(gameTeamCountInput.value),
+    members: Number(gameMembersInput.value),
   };
 }
 
@@ -299,6 +316,7 @@ async function saveGame(event) {
         });
     setGames(result.games);
     applyGame(result.game.id);
+    if (participants.length) show(configForm);
     closeGameEditor();
     setCloudStatus(editingId ? `Permainan ${result.game.name} diperbarui` : `Permainan ${result.game.name} ditambahkan`);
   } catch (error) {
@@ -309,26 +327,15 @@ async function saveGame(event) {
 
 async function removeGame(id) {
   const game = getGame(id, games);
+  if (!game) return;
   if (!confirm(`Hapus permainan “${game.name}”?`)) return;
   try {
     const result = await api(`/api/games/${encodeURIComponent(id)}`, { method: "DELETE" });
     setGames(result.games, { keepSelection: selectedGameId !== id });
-    if (selectedGameId === id) applyGame(games[0].id);
+    applyGame(selectedGameId);
+    if (!games.length) hide(configForm);
     closeGameEditor();
     setCloudStatus(`Permainan ${game.name} dihapus`);
-  } catch (error) {
-    setCloudStatus(error.message, "warn");
-  }
-}
-
-async function restoreGames() {
-  if (!confirm("Tambahkan kembali permainan bawaan yang belum ada? Permainan kustom tetap disimpan.")) {
-    return;
-  }
-  try {
-    const result = await api("/api/games/restore", { method: "POST" });
-    setGames(result.games);
-    setCloudStatus("Permainan bawaan dipulihkan");
   } catch (error) {
     setCloudStatus(error.message, "warn");
   }
@@ -347,7 +354,7 @@ async function refreshDrawHistory(selectedId) {
     ${draws
       .map(
         (draw) =>
-          `<option value="${draw.id}" ${String(draw.id) === String(selectedId) ? "selected" : ""}>Undian #${draw.id} · ${escapeHtml(draw.gameName || "Umum")} · ${draw.teamCount}×${draw.membersPerTeam} · ${escapeHtml(draw.createdAt)}</option>`,
+          `<option value="${draw.id}" ${String(draw.id) === String(selectedId) ? "selected" : ""}>Undian #${draw.id} · ${escapeHtml(draw.gameName || "Permainan")} · ${draw.teamCount}×${draw.membersPerTeam} · ${escapeHtml(draw.createdAt)}</option>`,
       )
       .join("")}
   `;
@@ -356,6 +363,11 @@ async function refreshDrawHistory(selectedId) {
 
 async function runDraw() {
   hide(configError);
+  if (!selectedGame()) {
+    configError.textContent = "Buat dan pilih jenis permainan dulu.";
+    show(configError);
+    return;
+  }
   try {
     const result = await api("/api/draws", {
       method: "POST",
@@ -379,6 +391,7 @@ async function runDraw() {
 async function loadGamesFromCloud() {
   const data = await api("/api/games");
   setGames(data.games);
+  if (!data.games.length) openGameEditor();
 }
 
 async function loadFromCloud() {
@@ -458,20 +471,8 @@ gameGrid.addEventListener("click", (event) => {
 });
 
 document.querySelector("#add-game").addEventListener("click", () => openGameEditor());
-document.querySelector("#restore-games").addEventListener("click", restoreGames);
 document.querySelector("#game-cancel").addEventListener("click", closeGameEditor);
 gameEditor.addEventListener("submit", saveGame);
-
-gameNameInput.addEventListener("input", () => {
-  if (gameEditId.value) return;
-  if (!gamePrefixInput.dataset.touched) {
-    gamePrefixInput.value = gameNameInput.value.trim() || "Tim";
-  }
-});
-
-gamePrefixInput.addEventListener("input", () => {
-  gamePrefixInput.dataset.touched = "1";
-});
 
 teamCountInput.addEventListener("input", updateNeed);
 membersInput.addEventListener("input", updateNeed);
@@ -485,7 +486,7 @@ document.querySelector("#reshuffle").addEventListener("click", runDraw);
 
 document.querySelector("#export-csv").addEventListener("click", () => {
   if (!lastResult) return;
-  const csv = teamsToCsv(lastResult.teams, lastResult.leftover, lastResult.gameName || selectedGame().name);
+  const csv = teamsToCsv(lastResult.teams, lastResult.leftover, lastResult.gameName || selectedGame()?.name || "");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

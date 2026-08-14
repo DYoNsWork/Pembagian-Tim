@@ -2,7 +2,7 @@
 
 Aplikasi web untuk membagi peserta ke dalam **grup permainan** secara acak. Data diunggah dari file CSV berisi **nama**, **jenis kelamin**, dan **nama cabang**. Cabang hanya ditampilkan; pengacakan tidak mengelompokkan berdasarkan cabang.
 
-Pilih atau **buat sendiri** jenis permainan (futsal, voli, gobak sodor, dan lainnya) agar jumlah anggota per grup mengikuti aturan pertandingan. Permainan bawaan bisa diubah atau dihapus, lalu dipulihkan lagi.
+Pilih atau **buat sendiri** jenis permainan. Katalog mulai **kosong**; isi nama, penjelasan, jumlah grup, dan jumlah peserta per grup.
 
 Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disimpan di **Cloudflare D1**.
 
@@ -20,13 +20,13 @@ Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disi
 
 2. Unggah CSV di aplikasi. Data langsung tersimpan di D1, jadi tetap ada setelah halaman di-refresh.
 
-3. Kelola **jenis permainan**: pilih kartu yang sudah ada, atau **tambah / ubah / hapus**. Jumlah anggota per grup terisi otomatis. Jumlah grup disarankan dari peserta yang cukup untuk skuad penuh. Opsional: centang **seimbangkan jenis kelamin**.
+3. **Tambah jenis permainan**: nama, penjelasan, jumlah grup, dan peserta per grup. Pilih kartu permainan, lalu bagi grup. Opsional: centang **seimbangkan jenis kelamin**.
 
-   Contoh: 72 peserta + futsal → 14 grup × 5 orang, 2 cadangan. Permainan kustom (misalnya gobak sodor 8 orang) ikut tersimpan di D1. Jika peserta kurang dari kebutuhan, aplikasi menampilkan peringatan.
+   Contoh: permainan “Gobak sodor” dengan 8 grup × 8 orang membutuhkan 64 peserta. Jika peserta lebih banyak, sisanya masuk cadangan. Jika kurang, aplikasi menampilkan peringatan.
 
 4. Hasil undian ikut tersimpan di D1. Bisa diacak ulang, dibuka dari riwayat, diunduh CSV, atau dicetak.
 
-Permainan bawaan (bisa diubah): umum/kustom, futsal (5), sepak bola (11), bola basket (5), bola voli (6), badminton ganda (2), tenis meja ganda (2), estafet (4), e-sports 5v5 (5), tarik tambang (8), beregu (4). Tombol **Pulihkan bawaan** mengembalikan yang belum ada tanpa menghapus permainan kustom.
+Katalog permainan bawaan kosong. Semua permainan didefinisikan sendiri dan tersimpan di D1.
 
 File contoh: `public/contoh-peserta.csv` (72 peserta).
 
@@ -162,4 +162,4 @@ Setelah itu, setiap **push ke branch yang terhubung** akan di-deploy Cloudflare 
 1. Buka URL Workers.
 2. Unggah CSV peserta (`nama, jenis kelamin, nama cabang`).
 3. Data tersimpan di D1 Cloudflare, tidak hilang saat refresh.
-4. Kelola jenis permainan (tambah/ubah/hapus), lalu bagi grup. Hasil undian tersimpan di D1.
+4. Tambah jenis permainan (nama, penjelasan, jumlah grup, peserta per grup), lalu bagi grup. Hasil undian tersimpan di D1.
