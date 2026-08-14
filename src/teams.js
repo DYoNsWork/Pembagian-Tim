@@ -66,11 +66,7 @@ export function divideTeams(
     );
   }
 
-  const prefix = String(gameName || "Tim").trim() || "Tim";
-  const selected =
-    mode === "campur"
-      ? pickBalanced(pool, teamsWanted, size, random)
-      : shuffle(pool, random).slice(0, needed);
+  const selected = shuffle(pool, random).slice(0, needed);
   const selectedSet = new Set(selected);
   const leftover = pool.filter((person) => !selectedSet.has(person));
 
@@ -78,7 +74,7 @@ export function divideTeams(
   for (let i = 0; i < teamsWanted; i += 1) {
     teams.push({
       number: i + 1,
-      name: `${prefix} ${i + 1}`,
+      name: `Tim ${i + 1}`,
       members: selected.slice(i * size, (i + 1) * size),
     });
   }
@@ -90,46 +86,9 @@ export function divideTeams(
     used: selected.length,
     total: participants.length,
     poolSize: pool.length,
-    gameName: prefix,
+    gameName: String(gameName || "").trim(),
     genderMode: mode,
   };
-}
-
-function pickBalanced(participants, teamCount, membersPerTeam, random) {
-  const queues = {
-    laki: shuffle(
-      participants.filter((person) => person.jenisKelamin === "Laki-laki"),
-      random,
-    ),
-    perempuan: shuffle(
-      participants.filter((person) => person.jenisKelamin === "Perempuan"),
-      random,
-    ),
-    lain: shuffle(
-      participants.filter(
-        (person) => person.jenisKelamin !== "Laki-laki" && person.jenisKelamin !== "Perempuan",
-      ),
-      random,
-    ),
-  };
-
-  const teams = Array.from({ length: teamCount }, () => []);
-  for (const team of teams) {
-    while (team.length < membersPerTeam) {
-      const laki = team.filter((person) => person.jenisKelamin === "Laki-laki").length;
-      const perempuan = team.filter((person) => person.jenisKelamin === "Perempuan").length;
-      const person =
-        laki <= perempuan && queues.laki.length
-          ? queues.laki.shift()
-          : queues.perempuan.length
-            ? queues.perempuan.shift()
-            : queues.laki.shift() || queues.lain.shift();
-      if (!person) break;
-      team.push(person);
-    }
-  }
-
-  return teams.flat();
 }
 
 export function teamsToCsv(teams, leftover = [], gameName = "") {
