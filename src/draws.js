@@ -45,6 +45,18 @@ export function groupDrawMembers(rows) {
   };
 }
 
+export function extraDrawIds(rows) {
+  const seen = new Set();
+  const extra = [];
+  for (const row of rows || []) {
+    const gameId = String(row.game_id || "").trim();
+    if (!gameId) continue;
+    if (seen.has(gameId)) extra.push(row.id);
+    else seen.add(gameId);
+  }
+  return extra;
+}
+
 export function chunk(items, size) {
   const groups = [];
   for (let i = 0; i < items.length; i += size) {

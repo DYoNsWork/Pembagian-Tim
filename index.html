@@ -87,13 +87,14 @@
               <fieldset class="game-fieldset">
                 <p class="hint">
                   Katalog mulai kosong. Tambah permainan dengan nama, penjelasan, jumlah
-                  grup, dan jumlah peserta per grup.
+                  grup, dan jumlah peserta per grup. Saat membagi grup, pilih permainan
+                  dari menu tarik-turun di halaman Pembagian.
                 </p>
                 <div class="game-toolbar">
                   <button type="button" class="secondary" id="add-game">Tambah permainan</button>
                 </div>
                 <p class="empty-games" id="games-empty">Belum ada permainan. Klik <strong>Tambah permainan</strong> untuk mulai.</p>
-                <div class="game-grid hidden" id="game-grid" role="radiogroup" aria-label="Jenis permainan"></div>
+                <div class="game-grid hidden" id="game-grid" aria-label="Daftar permainan"></div>
                 <form id="game-editor" class="game-editor hidden">
                   <input id="game-edit-id" type="hidden" />
                   <label class="game-editor-wide">
@@ -131,7 +132,16 @@
                 Unggah peserta dan tambah permainan dulu, lalu kembali ke menu Pembagian.
               </p>
               <form id="config-form" class="draw-settings hidden">
-                <p class="hint" id="selected-game-label">Pilih permainan di menu Permainan.</p>
+                <label class="game-select-wide">
+                  Permainan
+                  <select id="draw-game" required>
+                    <option value="">Pilih permainan</option>
+                  </select>
+                </label>
+                <p class="hint" id="selected-game-label">Pilih permainan yang akan diundi.</p>
+                <p class="hint hidden" id="draw-replace-hint">
+                  Permainan ini sudah punya hasil acak. Membagi lagi akan mengganti hasil yang ada.
+                </p>
                 <fieldset class="gender-fieldset">
                   <legend>Komposisi grup</legend>
                   <div class="gender-modes" id="gender-modes" role="radiogroup" aria-label="Komposisi grup">
@@ -165,7 +175,7 @@
                     Kebutuhan: <strong>64 orang</strong>
                   </div>
                 </div>
-                <button type="submit" class="primary">Bagi grup permainan secara acak</button>
+                <button type="submit" class="primary" id="draw-submit">Bagi grup secara acak</button>
                 <p class="hint">
                   Campur menyeimbangkan laki-laki dan perempuan di tiap grup. Mode
                   laki-laki atau perempuan hanya memakai peserta sesuai pilihan.
@@ -181,7 +191,7 @@
               <div class="panel-head">
                 <h2>Grup permainan</h2>
                 <div class="actions">
-                  <select id="draw-history" class="hidden" aria-label="Undian tersimpan"></select>
+                  <select id="draw-history" class="hidden" aria-label="Hasil per permainan"></select>
                   <button type="button" class="secondary" id="reshuffle">Acak ulang</button>
                   <button type="button" class="secondary" id="export-csv">Unduh hasil CSV</button>
                   <button type="button" class="secondary" id="print-result">Cetak</button>

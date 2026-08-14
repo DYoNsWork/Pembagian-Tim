@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chunk, groupDrawMembers, personFromRow } from "./draws.js";
+import { chunk, extraDrawIds, groupDrawMembers, personFromRow } from "./draws.js";
 
 describe("groupDrawMembers", () => {
   it("mengelompokkan anggota tim dan cadangan", () => {
@@ -30,6 +30,19 @@ describe("personFromRow", () => {
       jenisKelamin: "Laki-laki",
       cabang: "Jakarta",
     });
+  });
+});
+
+describe("extraDrawIds", () => {
+  it("menyimpan undian terbaru untuk setiap permainan", () => {
+    expect(
+      extraDrawIds([
+        { id: 9, game_id: "futsal" },
+        { id: 8, game_id: "voli" },
+        { id: 7, game_id: "futsal" },
+        { id: 6, game_id: "voli" },
+      ]),
+    ).toEqual([7, 6]);
   });
 });
 

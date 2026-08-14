@@ -22,11 +22,11 @@ Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disi
 
 3. Di menu **Permainan**, tambah jenis permainan: nama, penjelasan, jumlah grup, dan peserta per grup.
 
-4. Di menu **Pembagian**, pilih komposisi grup: **campur**, **laki-laki saja**, atau **perempuan saja**. Campur menyeimbangkan laki-laki dan perempuan di tiap grup. Mode satu jenis kelamin hanya memakai peserta sesuai pilihan.
+4. Di menu **Pembagian**, pilih permainan dari menu tarik-turun, lalu pilih komposisi grup: **campur**, **laki-laki saja**, atau **perempuan saja**. Setiap jenis lomba hanya punya **satu hasil acak**; membagi lagi mengganti hasil sebelumnya.
 
    Contoh: permainan “Gobak sodor” dengan 8 grup × 8 orang membutuhkan 64 peserta dari kumpulan yang dipilih. Jika lebih, sisanya masuk cadangan. Jika kurang, aplikasi menampilkan peringatan.
 
-5. Hasil undian ada di menu **Hasil**. Bisa diacak ulang, dibuka dari riwayat, diunduh CSV, atau dicetak.
+5. Hasil undian ada di menu **Hasil**, satu per permainan. Bisa diganti dengan acak ulang, diunduh CSV, atau dicetak.
 
 Gunakan **menu samping** untuk pindah halaman: Peserta, Permainan, Pembagian, dan Hasil.
 
