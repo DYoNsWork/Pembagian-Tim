@@ -1,6 +1,12 @@
 import { divideTeams } from "../src/teams.js";
 import { chunk, groupDrawMembers, personFromRow } from "../src/draws.js";
-import { getGame, GAMES } from "../src/games.js";
+import {
+  DEFAULT_GAMES,
+  gameFromRow,
+  getGame,
+  MAX_GAMES,
+  normalizeGame,
+} from "../src/games.js";
 
 const SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS participants (id INTEGER PRIMARY KEY AUTOINCREMENT, nama TEXT NOT NULL, jenis_kelamin TEXT NOT NULL, cabang TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
@@ -8,6 +14,7 @@ const SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS draws (id INTEGER PRIMARY KEY AUTOINCREMENT, team_count INTEGER NOT NULL, members_per_team INTEGER NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
   `CREATE TABLE IF NOT EXISTS draw_members (id INTEGER PRIMARY KEY AUTOINCREMENT, draw_id INTEGER NOT NULL, team_number INTEGER NOT NULL, team_name TEXT NOT NULL, nama TEXT NOT NULL, jenis_kelamin TEXT NOT NULL, cabang TEXT NOT NULL, FOREIGN KEY (draw_id) REFERENCES draws(id))`,
   `CREATE INDEX IF NOT EXISTS idx_draw_members_draw_id ON draw_members(draw_id)`,
+  `CREATE TABLE IF NOT EXISTS games (id TEXT PRIMARY KEY, name TEXT NOT NULL, members INTEGER NOT NULL, description TEXT NOT NULL DEFAULT '', label_prefix TEXT NOT NULL, is_builtin INTEGER NOT NULL DEFAULT 0, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
 ];
 
 const MAX_PARTICIPANTS = 2000;
@@ -23,6 +30,7 @@ export default {
     try {
       await env.DB.batch(SCHEMA_STATEMENTS.map((sql) => env.DB.prepare(sql)));
       await ensureDrawGameColumns(env);
+      await seedGamesIfEmpty(env);
       return await handleApi(request, env, url);
     } catch (error) {
       const status = Number(error.status) || 500;
@@ -55,7 +63,26 @@ async function handleApi(request, env, url) {
   }
 
   if (path === "/api/games" && request.method === "GET") {
-    return json({ games: GAMES });
+    return json({ games: await listGames(env) });
+  }
+
+  if (path === "/api/games" && request.method === "POST") {
+    const body = await readJson(request);
+    return json(await createGame(env, body), 201);
+  }
+
+  if (path === "/api/games/restore" && request.method === "POST") {
+    return json(await restoreDefaultGames(env));
+  }
+
+  const gameMatch = path.match(/^\/api\/games\/([^/]+)$/);
+  if (gameMatch && request.method === "PUT") {
+    const body = await readJson(request);
+    return json(await updateGame(env, decodeURIComponent(gameMatch[1]), body));
+  }
+
+  if (gameMatch && request.method === "DELETE") {
+    return json(await deleteGame(env, decodeURIComponent(gameMatch[1])));
   }
 
   if (path === "/api/draws" && request.method === "GET") {
@@ -150,8 +177,92 @@ async function listDraws(env) {
   };
 }
 
+async function listGames(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT id, name, members, description, label_prefix, is_builtin, sort_order FROM games ORDER BY sort_order ASC, name ASC",
+  ).all();
+  return (results || []).map(gameFromRow);
+}
+
+async function seedGamesIfEmpty(env) {
+  const row = await env.DB.prepare("SELECT COUNT(*) AS n FROM games").first();
+  if (Number(row?.n) > 0) return;
+  await insertDefaultGames(env, { ignoreExisting: false });
+}
+
+async function insertDefaultGames(env, { ignoreExisting }) {
+  const sql = ignoreExisting
+    ? "INSERT OR IGNORE INTO games (id, name, members, description, label_prefix, is_builtin, sort_order) VALUES (?, ?, ?, ?, ?, 1, ?)"
+    : "INSERT INTO games (id, name, members, description, label_prefix, is_builtin, sort_order) VALUES (?, ?, ?, ?, ?, 1, ?)";
+  const stmt = env.DB.prepare(sql);
+  await env.DB.batch(
+    DEFAULT_GAMES.map((game, index) =>
+      stmt.bind(game.id, game.name, game.members, game.description, game.labelPrefix, index),
+    ),
+  );
+}
+
+async function restoreDefaultGames(env) {
+  await insertDefaultGames(env, { ignoreExisting: true });
+  console.log("games_restored");
+  return { games: await listGames(env) };
+}
+
+async function createGame(env, body) {
+  const games = await listGames(env);
+  if (games.length >= MAX_GAMES) {
+    throw Object.assign(new Error(`Maksimal ${MAX_GAMES} jenis permainan.`), { status: 400 });
+  }
+
+  const parsed = normalizeGame(body, { existingIds: games.map((game) => game.id) });
+  const sortOrder = games.reduce((max, game) => Math.max(max, game.sortOrder), 0) + 1;
+  await env.DB.prepare(
+    "INSERT INTO games (id, name, members, description, label_prefix, is_builtin, sort_order) VALUES (?, ?, ?, ?, ?, 0, ?)",
+  )
+    .bind(parsed.id, parsed.name, parsed.members, parsed.description, parsed.labelPrefix, sortOrder)
+    .run();
+
+  console.log("game_created", { id: parsed.id });
+  const list = await listGames(env);
+  return { game: getGame(parsed.id, list), games: list };
+}
+
+async function updateGame(env, id, body) {
+  const games = await listGames(env);
+  const current = games.find((game) => game.id === id);
+  if (!current) {
+    throw Object.assign(new Error("Jenis permainan tidak ditemukan."), { status: 404 });
+  }
+
+  const parsed = normalizeGame(body, { id, existingIds: games.map((game) => game.id) });
+  await env.DB.prepare(
+    "UPDATE games SET name = ?, members = ?, description = ?, label_prefix = ? WHERE id = ?",
+  )
+    .bind(parsed.name, parsed.members, parsed.description, parsed.labelPrefix, id)
+    .run();
+
+  console.log("game_updated", { id });
+  const list = await listGames(env);
+  return { game: getGame(id, list), games: list };
+}
+
+async function deleteGame(env, id) {
+  const games = await listGames(env);
+  const current = games.find((game) => game.id === id);
+  if (!current) {
+    throw Object.assign(new Error("Jenis permainan tidak ditemukan."), { status: 404 });
+  }
+  if (games.length <= 1) {
+    throw Object.assign(new Error("Minimal satu jenis permainan harus tersisa."), { status: 400 });
+  }
+
+  await env.DB.prepare("DELETE FROM games WHERE id = ?").bind(id).run();
+  console.log("game_deleted", { id });
+  return { ok: true, deletedId: id, games: await listGames(env) };
+}
+
 async function createDraw(env, body) {
-  const game = getGame(body?.gameId);
+  const game = getGame(body?.gameId, await listGames(env));
   const teamCount = Number(body?.teamCount);
   const membersPerTeam = Number(body?.membersPerTeam) || game.members;
   const balanceGender = Boolean(body?.balanceGender);

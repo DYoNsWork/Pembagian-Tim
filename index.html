@@ -18,9 +18,10 @@
         <p class="eyebrow">Pengundian peserta</p>
         <h1>Pembagian Grup Permainan</h1>
         <p class="lede">
-          Unggah daftar peserta dari CSV, pilih jenis permainan, lalu sistem membagi
-          grup sesuai ukuran pertandingan dan mengacak semua nama tanpa membedakan
-          cabang. Data peserta dan hasil undian disimpan di Cloudflare D1.
+          Unggah daftar peserta dari CSV, pilih atau buat jenis permainan, lalu sistem
+          membagi grup sesuai ukuran pertandingan dan mengacak semua nama tanpa
+          membedakan cabang. Data peserta, permainan, dan hasil undian disimpan di
+          Cloudflare D1.
         </p>
         <p class="cloud-status" id="cloud-status">Menghubungkan ke Cloudflare D1…</p>
       </header>
@@ -66,19 +67,48 @@
           </div>
         </section>
 
-        <section class="panel hidden" id="config-panel">
+        <section class="panel" id="config-panel">
           <div class="panel-head">
-            <h2>3. Pilih permainan dan atur grup</h2>
+            <h2>3. Kelola permainan dan atur grup</h2>
           </div>
-          <form id="config-form">
-            <fieldset class="game-fieldset">
-              <legend>Jenis permainan</legend>
-              <p class="hint">
-                Grup yang dibagi dipakai untuk pertandingan. Pilih permainan agar
-                jumlah anggota mengikuti aturan, lalu sesuaikan jumlah grup jika perlu.
-              </p>
-              <div class="game-grid" id="game-grid" role="radiogroup" aria-label="Jenis permainan"></div>
-            </fieldset>
+          <fieldset class="game-fieldset">
+            <legend>Jenis permainan</legend>
+            <p class="hint">
+              Tambah, ubah, atau hapus permainan sesuai kebutuhan acara. Pilih satu
+              kartu agar jumlah anggota mengikuti aturan, lalu sesuaikan jumlah grup
+              jika perlu.
+            </p>
+            <div class="game-toolbar">
+              <button type="button" class="secondary" id="add-game">Tambah permainan</button>
+              <button type="button" class="secondary" id="restore-games">Pulihkan bawaan</button>
+            </div>
+            <div class="game-grid" id="game-grid" role="radiogroup" aria-label="Jenis permainan"></div>
+            <form id="game-editor" class="game-editor hidden">
+              <input id="game-edit-id" type="hidden" />
+              <label>
+                Nama permainan
+                <input id="game-name" type="text" maxlength="80" required placeholder="Contoh: Gobak sodor" />
+              </label>
+              <label>
+                Anggota per grup
+                <input id="game-members" type="number" min="1" max="99" step="1" required />
+              </label>
+              <label>
+                Awalan nama grup
+                <input id="game-prefix" type="text" maxlength="40" required placeholder="Regu" />
+              </label>
+              <label class="game-editor-wide">
+                Deskripsi
+                <input id="game-description" type="text" maxlength="200" placeholder="Keterangan singkat (opsional)" />
+              </label>
+              <div class="game-editor-actions">
+                <button type="submit" class="primary">Simpan permainan</button>
+                <button type="button" class="secondary" id="game-cancel">Batal</button>
+              </div>
+              <p class="error hidden" id="game-error"></p>
+            </form>
+          </fieldset>
+          <form id="config-form" class="draw-settings hidden">
             <div class="config-grid">
               <label>
                 Jumlah grup
@@ -97,12 +127,12 @@
               <span>Seimbangkan laki-laki dan perempuan di tiap grup</span>
             </label>
             <button type="submit" class="primary">Bagi grup permainan secara acak</button>
+            <p class="hint">
+              Pengacakan tidak melihat cabang. Jika peserta lebih banyak dari kebutuhan,
+              sisanya masuk daftar cadangan.
+            </p>
+            <p class="error hidden" id="config-error"></p>
           </form>
-          <p class="hint">
-            Pengacakan tidak melihat cabang. Jika peserta lebih banyak dari kebutuhan,
-            sisanya masuk daftar cadangan.
-          </p>
-          <p class="error hidden" id="config-error"></p>
         </section>
 
         <section class="panel hidden" id="result-panel">
@@ -123,8 +153,9 @@
 
       <footer>
         <p>
-          Grup dipakai untuk pertandingan. Pembagian bersifat acak; cabang hanya
-          ditampilkan, tidak dipakai untuk mengelompokkan. Data disimpan di Cloudflare D1.
+          Grup dipakai untuk pertandingan. Jenis permainan bisa ditambah, diubah, atau
+          dihapus. Pembagian bersifat acak; cabang hanya ditampilkan. Data disimpan di
+          Cloudflare D1.
         </p>
       </footer>
     </div>
