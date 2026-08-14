@@ -3,9 +3,6 @@
   "name": "pembagian-tim",
   "compatibility_date": "2026-08-14",
   "main": "./worker/index.js",
-  "build": {
-    "command": "npm run build"
-  },
   "assets": {
     "directory": "./dist/client",
     "not_found_handling": "single-page-application",
