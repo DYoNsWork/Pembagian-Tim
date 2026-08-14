@@ -64,6 +64,29 @@ describe("divideTeams", () => {
     const usedIds = result.teams.flatMap((team) => team.members.map((m) => m.id)).sort((a, b) => Number(a) - Number(b));
     expect(usedIds).toEqual(sequential.map((p) => p.id));
   });
+
+  it("menamai grup sesuai permainan", () => {
+    const result = divideTeams(people(8), {
+      teamCount: 2,
+      membersPerTeam: 4,
+      gameName: "Tim Futsal",
+    });
+    expect(result.teams.map((team) => team.name)).toEqual(["Tim Futsal 1", "Tim Futsal 2"]);
+  });
+
+  it("menyeimbangkan jenis kelamin antar grup", () => {
+    const result = divideTeams(people(8), {
+      teamCount: 2,
+      membersPerTeam: 4,
+      balanceGender: true,
+    });
+    for (const team of result.teams) {
+      const laki = team.members.filter((m) => m.jenisKelamin === "Laki-laki").length;
+      const perempuan = team.members.filter((m) => m.jenisKelamin === "Perempuan").length;
+      expect(laki).toBe(2);
+      expect(perempuan).toBe(2);
+    }
+  });
 });
 
 describe("teamsToCsv", () => {
@@ -75,9 +98,9 @@ describe("teamsToCsv", () => {
       },
     ];
     const leftover = [{ nama: "Siti", jenisKelamin: "Perempuan", cabang: "Bandung" }];
-    const csv = teamsToCsv(teams, leftover);
-    expect(csv).toContain("tim,nama,jenis kelamin,nama cabang");
-    expect(csv).toContain("Tim 1,Andi,Laki-laki,Jakarta");
-    expect(csv).toContain("Cadangan,Siti,Perempuan,Bandung");
+    const csv = teamsToCsv(teams, leftover, "Futsal");
+    expect(csv).toContain("permainan,tim,nama,jenis kelamin,nama cabang");
+    expect(csv).toContain("Futsal,Tim 1,Andi,Laki-laki,Jakarta");
+    expect(csv).toContain("Futsal,Cadangan,Siti,Perempuan,Bandung");
   });
 });

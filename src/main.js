@@ -1,5 +1,6 @@
 import { parseParticipantsCsv, summarizeParticipants } from "./csv.js";
 import { teamsToCsv } from "./teams.js";
+import { GAMES, getGame, suggestedTeamCount } from "./games.js";
 import { api } from "./api.js";
 
 const fileInput = document.querySelector("#file-input");
@@ -13,6 +14,8 @@ const statsEl = document.querySelector("#stats");
 const rowsEl = document.querySelector("#participant-rows");
 const teamCountInput = document.querySelector("#team-count");
 const membersInput = document.querySelector("#members-per-team");
+const balanceGenderInput = document.querySelector("#balance-gender");
+const gameGrid = document.querySelector("#game-grid");
 const needBox = document.querySelector("#need-box");
 const configForm = document.querySelector("#config-form");
 const configError = document.querySelector("#config-error");
@@ -25,6 +28,7 @@ const clearBtn = document.querySelector("#clear-cloud");
 
 let participants = [];
 let lastResult = null;
+let selectedGameId = "umum";
 
 function show(el) {
   el.classList.remove("hidden");
@@ -40,13 +44,44 @@ function setCloudStatus(message, kind = "ok") {
   show(cloudStatus);
 }
 
+function selectedGame() {
+  return getGame(selectedGameId);
+}
+
 function updateNeed() {
   const teams = Number(teamCountInput.value);
   const size = Number(membersInput.value);
   const needed = teams * size;
   const enough = Number.isInteger(needed) && needed > 0 && participants.length >= needed;
-  needBox.innerHTML = `Kebutuhan: <strong>${needed || 0} orang</strong> dari ${participants.length} peserta`;
+  const game = selectedGame();
+  needBox.innerHTML = `${escapeHtml(game.name)}: <strong>${needed || 0} orang</strong> dari ${participants.length} peserta`;
   needBox.style.color = enough ? "inherit" : "var(--danger)";
+}
+
+function renderGamePicker() {
+  gameGrid.innerHTML = GAMES.map(
+    (game) => `
+      <label class="game-card ${game.id === selectedGameId ? "is-selected" : ""}">
+        <input type="radio" name="game-id" value="${escapeHtml(game.id)}" ${
+          game.id === selectedGameId ? "checked" : ""
+        } />
+        <span class="game-card-name">${escapeHtml(game.name)}</span>
+        <span class="game-card-size">${game.members} orang / grup</span>
+        <span class="game-card-desc">${escapeHtml(game.description)}</span>
+      </label>
+    `,
+  ).join("");
+}
+
+function applyGame(gameId, { suggestTeams = true } = {}) {
+  selectedGameId = gameId;
+  const game = getGame(gameId);
+  membersInput.value = String(game.members);
+  if (suggestTeams && participants.length) {
+    teamCountInput.value = String(suggestedTeamCount(participants.length, game.members));
+  }
+  renderGamePicker();
+  updateNeed();
 }
 
 function renderParticipants(list) {
@@ -97,11 +132,11 @@ function showParticipantData(list, name, { saved = true } = {}) {
   }.`;
   fileName.textContent = name || "Cloudflare D1";
   renderParticipants(list);
+  applyGame(selectedGameId);
   show(dataPanel);
   show(configPanel);
   show(clearBtn);
   hide(configError);
-  updateNeed();
 }
 
 async function persistParticipants(list, name) {
@@ -125,8 +160,9 @@ async function readFile(file) {
 
 function renderResult(result) {
   lastResult = result;
+  const gameLabel = result.gameName ? `${result.gameName} · ` : "";
   const when = result.createdAt ? ` Disimpan ${formatTime(result.createdAt)}.` : "";
-  resultMeta.textContent = `${result.teams.length} tim × ${result.teams[0]?.members.length || 0} anggota. ${result.used} peserta terpakai dari ${result.total}.${when}`;
+  resultMeta.textContent = `${gameLabel}${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota. ${result.used} peserta terpakai dari ${result.total}.${when}`;
   teamsEl.innerHTML = result.teams
     .map(
       (team) => `
@@ -162,6 +198,14 @@ function renderResult(result) {
     leftoverEl.innerHTML = "";
   }
 
+  if (result.gameId) {
+    selectedGameId = result.gameId;
+    teamCountInput.value = String(result.teamCount || result.teams.length);
+    membersInput.value = String(result.membersPerTeam || result.teams[0]?.members.length || selectedGame().members);
+    renderGamePicker();
+    updateNeed();
+  }
+
   show(resultPanel);
 }
 
@@ -169,6 +213,13 @@ function formatTime(value) {
   const date = new Date(`${value}Z`);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("id-ID");
+}
+
+function slugify(value) {
+  return String(value || "tim")
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/^-|-$/g, "") || "tim";
 }
 
 async function refreshDrawHistory(selectedId) {
@@ -184,7 +235,7 @@ async function refreshDrawHistory(selectedId) {
     ${draws
       .map(
         (draw) =>
-          `<option value="${draw.id}" ${String(draw.id) === String(selectedId) ? "selected" : ""}>Undian #${draw.id} · ${draw.teamCount}×${draw.membersPerTeam} · ${escapeHtml(draw.createdAt)}</option>`,
+          `<option value="${draw.id}" ${String(draw.id) === String(selectedId) ? "selected" : ""}>Undian #${draw.id} · ${escapeHtml(draw.gameName || "Umum")} · ${draw.teamCount}×${draw.membersPerTeam} · ${escapeHtml(draw.createdAt)}</option>`,
       )
       .join("")}
   `;
@@ -199,10 +250,12 @@ async function runDraw() {
       body: JSON.stringify({
         teamCount: Number(teamCountInput.value),
         membersPerTeam: Number(membersInput.value),
+        gameId: selectedGameId,
+        balanceGender: Boolean(balanceGenderInput.checked),
       }),
     });
     renderResult(result);
-    setCloudStatus(`Hasil undian #${result.id} tersimpan di Cloudflare D1`);
+    setCloudStatus(`Grup ${result.gameName} #${result.id} tersimpan di Cloudflare D1`);
     await refreshDrawHistory(result.id);
     resultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
@@ -265,6 +318,13 @@ fileInput.addEventListener("change", () => {
   }
 });
 
+gameGrid.addEventListener("change", (event) => {
+  const input = event.target;
+  if (input instanceof HTMLInputElement && input.name === "game-id") {
+    applyGame(input.value);
+  }
+});
+
 teamCountInput.addEventListener("input", updateNeed);
 membersInput.addEventListener("input", updateNeed);
 
@@ -277,12 +337,12 @@ document.querySelector("#reshuffle").addEventListener("click", runDraw);
 
 document.querySelector("#export-csv").addEventListener("click", () => {
   if (!lastResult) return;
-  const csv = teamsToCsv(lastResult.teams, lastResult.leftover);
+  const csv = teamsToCsv(lastResult.teams, lastResult.leftover, lastResult.gameName || selectedGame().name);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "hasil-pembagian-tim.csv";
+  link.download = `hasil-${slugify(lastResult.gameName || "pembagian-tim")}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 });
@@ -307,6 +367,7 @@ clearBtn.addEventListener("click", async () => {
     await api("/api/participants", { method: "DELETE" });
     participants = [];
     lastResult = null;
+    selectedGameId = "umum";
     hide(dataPanel);
     hide(configPanel);
     hide(resultPanel);
@@ -314,9 +375,11 @@ clearBtn.addEventListener("click", async () => {
     hide(drawHistory);
     fileStatus.textContent = "Data Cloudflare D1 sudah dikosongkan.";
     setCloudStatus("Cloudflare D1 kosong. Unggah CSV baru.", "muted");
+    renderGamePicker();
   } catch (error) {
     setCloudStatus(error.message, "warn");
   }
 });
 
+renderGamePicker();
 loadFromCloud();

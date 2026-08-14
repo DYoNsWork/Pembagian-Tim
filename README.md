@@ -1,6 +1,8 @@
 # Pembagian Tim
 
-Aplikasi web untuk membagi peserta ke dalam tim secara acak. Data diunggah dari file CSV berisi **nama**, **jenis kelamin**, dan **nama cabang**. Cabang hanya ditampilkan; pengacakan tidak mengelompokkan berdasarkan cabang.
+Aplikasi web untuk membagi peserta ke dalam **grup permainan** secara acak. Data diunggah dari file CSV berisi **nama**, **jenis kelamin**, dan **nama cabang**. Cabang hanya ditampilkan; pengacakan tidak mengelompokkan berdasarkan cabang.
+
+Pilih jenis permainan (futsal, voli, badminton ganda, e-sports, dan lainnya) agar jumlah anggota per grup mengikuti aturan pertandingan. Mode **Umum / kustom** tetap bisa mengatur ukuran grup sendiri.
 
 Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disimpan di **Cloudflare D1**.
 
@@ -18,11 +20,13 @@ Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disi
 
 2. Unggah CSV di aplikasi. Data langsung tersimpan di D1, jadi tetap ada setelah halaman di-refresh.
 
-3. Isi **jumlah tim** dan **anggota per tim**, lalu klik **Bagi tim secara acak**.
+3. Pilih **jenis permainan**. Jumlah anggota per grup terisi otomatis (misalnya futsal 5, voli 6, ganda 2). Jumlah grup disarankan dari peserta yang cukup untuk skuad penuh. Opsional: centang **seimbangkan jenis kelamin**.
 
-   Contoh: 16 tim × 4 anggota membutuhkan 64 peserta. Jika file berisi lebih dari 64 nama, sisanya masuk daftar cadangan. Jika kurang, aplikasi menampilkan peringatan.
+   Contoh: 72 peserta + futsal → 14 grup × 5 orang, 2 cadangan. Mode umum tetap bisa 16 grup × 4 orang. Jika peserta kurang dari kebutuhan, aplikasi menampilkan peringatan.
 
 4. Hasil undian ikut tersimpan di D1. Bisa diacak ulang, dibuka dari riwayat, diunduh CSV, atau dicetak.
+
+Jenis permainan bawaan: umum/kustom, futsal (5), sepak bola (11), bola basket (5), bola voli (6), badminton ganda (2), tenis meja ganda (2), estafet (4), e-sports 5v5 (5), tarik tambang (8), beregu (4).
 
 File contoh: `public/contoh-peserta.csv` (72 peserta).
 
@@ -158,4 +162,4 @@ Setelah itu, setiap **push ke branch yang terhubung** akan di-deploy Cloudflare 
 1. Buka URL Workers.
 2. Unggah CSV peserta (`nama, jenis kelamin, nama cabang`).
 3. Data tersimpan di D1 Cloudflare, tidak hilang saat refresh.
-4. Bagi tim (contoh 16 tim × 4 orang). Hasil undian juga tersimpan di D1.
+4. Pilih jenis permainan, lalu bagi grup. Hasil undian (termasuk nama permainan) tersimpan di D1.
