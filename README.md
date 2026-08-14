@@ -79,20 +79,29 @@ Error *missing the required directory property* atau *Could not detect a directo
 5. **Non-production deploy command:** `npm run versions-upload`
 6. **Save**, lalu **Retry build**.
 
-**Database peserta (wajib, sekali saja):**
+**Database peserta (wajib, sebelum deploy berhasil):**
 
-1. Di dashboard, buka **Storage & Databases** → **D1 SQL Database** → **Create**.
-2. Nama database: `pembagian-tim-db`.
-3. Salin **Database ID**.
-4. Di repo, buka `wrangler.jsonc`, ganti `database_id` dengan ID itu, commit, lalu push. Cloudflare akan deploy ulang otomatis.
-5. Di komputer, jalankan sekali agar tabel peserta terbuat:
+Error *database '00000000-0000-0000-0000-000000000001' which was not found* artinya ID di `wrangler.jsonc` masih placeholder.
+
+1. Buka [D1 SQL Database](https://dash.cloudflare.com/?to=/:account/workers/d1).
+2. **Create** → nama: `pembagian-tim-db` → **Create**.
+3. Buka database itu, salin **Database ID** (format UUID).
+4. Di `wrangler.jsonc`, ganti nilai `database_id` dengan UUID itu.
+5. Commit, push, lalu **Retry build**.
+6. Setelah Worker live, jalankan sekali:
 
    ```bash
    npx wrangler login
    npm run db:migrate:remote
    ```
 
-   (Aplikasi juga membuat tabel sendiri saat API pertama kali dipanggil, tapi migrasi ini lebih rapi.)
+   Atau dari komputer yang sudah login Wrangler:
+
+   ```bash
+   npm run setup:d1
+   git add wrangler.jsonc && git commit -m "Pasang D1 pembagian-tim-db" && git push
+   npm run db:migrate:remote
+   ```
 
 Setelah itu, setiap **push ke branch yang terhubung** akan di-deploy Cloudflare secara otomatis.
 
