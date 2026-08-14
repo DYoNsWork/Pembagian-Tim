@@ -2,7 +2,7 @@
 
 Aplikasi web untuk membagi peserta ke dalam **grup permainan** secara acak. Data diunggah dari file CSV berisi **nama**, **jenis kelamin**, dan **nama cabang**. Cabang hanya ditampilkan; pengacakan tidak mengelompokkan berdasarkan cabang.
 
-Pilih atau **buat sendiri** jenis permainan. Katalog mulai **kosong**; isi nama, penjelasan, jumlah grup, dan jumlah peserta per grup.
+Pilih atau **buat sendiri** jenis permainan. Katalog mulai **kosong**. Bagi grup dengan komposisi **campur**, **laki-laki saja**, atau **perempuan saja**. Menu samping memindahkan halaman Peserta, Permainan, Pembagian, dan Hasil.
 
 Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disimpan di **Cloudflare D1**.
 
@@ -20,13 +20,15 @@ Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disi
 
 2. Unggah CSV di aplikasi. Data langsung tersimpan di D1, jadi tetap ada setelah halaman di-refresh.
 
-3. **Tambah jenis permainan**: nama, penjelasan, jumlah grup, dan peserta per grup. Pilih kartu permainan, lalu bagi grup. Opsional: centang **seimbangkan jenis kelamin**.
+3. Di menu **Permainan**, tambah jenis permainan: nama, penjelasan, jumlah grup, dan peserta per grup.
 
-   Contoh: permainan “Gobak sodor” dengan 8 grup × 8 orang membutuhkan 64 peserta. Jika peserta lebih banyak, sisanya masuk cadangan. Jika kurang, aplikasi menampilkan peringatan.
+4. Di menu **Pembagian**, pilih komposisi grup: **campur**, **laki-laki saja**, atau **perempuan saja**. Campur menyeimbangkan laki-laki dan perempuan di tiap grup. Mode satu jenis kelamin hanya memakai peserta sesuai pilihan.
 
-4. Hasil undian ikut tersimpan di D1. Bisa diacak ulang, dibuka dari riwayat, diunduh CSV, atau dicetak.
+   Contoh: permainan “Gobak sodor” dengan 8 grup × 8 orang membutuhkan 64 peserta dari kumpulan yang dipilih. Jika lebih, sisanya masuk cadangan. Jika kurang, aplikasi menampilkan peringatan.
 
-Katalog permainan bawaan kosong. Semua permainan didefinisikan sendiri dan tersimpan di D1.
+5. Hasil undian ada di menu **Hasil**. Bisa diacak ulang, dibuka dari riwayat, diunduh CSV, atau dicetak.
+
+Gunakan **menu samping** untuk pindah halaman: Peserta, Permainan, Pembagian, dan Hasil.
 
 File contoh: `public/contoh-peserta.csv` (72 peserta).
 
@@ -162,4 +164,4 @@ Setelah itu, setiap **push ke branch yang terhubung** akan di-deploy Cloudflare 
 1. Buka URL Workers.
 2. Unggah CSV peserta (`nama, jenis kelamin, nama cabang`).
 3. Data tersimpan di D1 Cloudflare, tidak hilang saat refresh.
-4. Tambah jenis permainan (nama, penjelasan, jumlah grup, peserta per grup), lalu bagi grup. Hasil undian tersimpan di D1.
+4. Tambah permainan, pilih campur/laki-laki/perempuan, lalu bagi grup. Hasil ada di menu Hasil.

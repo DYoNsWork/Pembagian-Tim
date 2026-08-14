@@ -1,7 +1,19 @@
 import { parseParticipantsCsv, summarizeParticipants } from "./csv.js";
-import { teamsToCsv } from "./teams.js";
+import {
+  filterByGender,
+  genderModeLabel,
+  normalizeGenderMode,
+  teamsToCsv,
+} from "./teams.js";
 import { getGame } from "./games.js";
 import { api } from "./api.js";
+
+const VIEWS = {
+  peserta: { eyebrow: "Peserta", title: "Data peserta" },
+  permainan: { eyebrow: "Permainan", title: "Jenis permainan" },
+  pembagian: { eyebrow: "Pembagian", title: "Bagi grup" },
+  hasil: { eyebrow: "Hasil", title: "Grup permainan" },
+};
 
 const fileInput = document.querySelector("#file-input");
 const dropzone = document.querySelector("#dropzone");
@@ -9,11 +21,14 @@ const fileStatus = document.querySelector("#file-status");
 const fileName = document.querySelector("#file-name");
 const dataPanel = document.querySelector("#data-panel");
 const resultPanel = document.querySelector("#result-panel");
+const resultEmpty = document.querySelector("#result-empty");
+const drawEmpty = document.querySelector("#draw-empty");
 const statsEl = document.querySelector("#stats");
 const rowsEl = document.querySelector("#participant-rows");
 const teamCountInput = document.querySelector("#team-count");
 const membersInput = document.querySelector("#members-per-team");
-const balanceGenderInput = document.querySelector("#balance-gender");
+const genderModes = document.querySelector("#gender-modes");
+const selectedGameLabel = document.querySelector("#selected-game-label");
 const gameGrid = document.querySelector("#game-grid");
 const gamesEmpty = document.querySelector("#games-empty");
 const gameEditor = document.querySelector("#game-editor");
@@ -32,11 +47,16 @@ const resultMeta = document.querySelector("#result-meta");
 const cloudStatus = document.querySelector("#cloud-status");
 const drawHistory = document.querySelector("#draw-history");
 const clearBtn = document.querySelector("#clear-cloud");
+const sidebar = document.querySelector("#sidebar");
+const navBackdrop = document.querySelector("#nav-backdrop");
+const viewEyebrow = document.querySelector("#view-eyebrow");
+const viewTitle = document.querySelector("#view-title");
 
 let participants = [];
 let games = [];
 let lastResult = null;
 let selectedGameId = "";
+let currentView = "peserta";
 
 function show(el) {
   el.classList.remove("hidden");
@@ -56,6 +76,41 @@ function selectedGame() {
   return getGame(selectedGameId, games);
 }
 
+function selectedGenderMode() {
+  const checked = genderModes.querySelector("input[name='gender-mode']:checked");
+  return normalizeGenderMode(checked?.value);
+}
+
+function poolParticipants() {
+  return filterByGender(participants, selectedGenderMode());
+}
+
+function closeSidebar() {
+  sidebar.classList.remove("is-open");
+  hide(navBackdrop);
+}
+
+function openSidebar() {
+  sidebar.classList.add("is-open");
+  show(navBackdrop);
+}
+
+function showView(name) {
+  if (!VIEWS[name]) return;
+  currentView = name;
+  document.querySelectorAll(".view").forEach((view) => {
+    view.classList.toggle("hidden", view.id !== `view-${name}`);
+  });
+  document.querySelectorAll(".nav-item").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.view === name);
+  });
+  viewEyebrow.textContent = VIEWS[name].eyebrow;
+  viewTitle.textContent = VIEWS[name].title;
+  closeSidebar();
+  if (name === "pembagian") updateDrawPanel();
+  if (name === "permainan" && !games.length) openGameEditor();
+}
+
 function setGames(list, { keepSelection = true } = {}) {
   games = Array.isArray(list) ? list : [];
   if (!games.length) {
@@ -64,18 +119,48 @@ function setGames(list, { keepSelection = true } = {}) {
     selectedGameId = games[0].id;
   }
   renderGamePicker();
-  updateNeed();
+  updateDrawPanel();
+}
+
+function updateGenderCounts() {
+  const summary = summarizeParticipants(participants);
+  document.querySelector("#count-campur").textContent = `${summary.total} peserta`;
+  document.querySelector("#count-laki").textContent = `${summary.laki} orang`;
+  document.querySelector("#count-perempuan").textContent = `${summary.perempuan} orang`;
+  genderModes.querySelectorAll(".gender-mode").forEach((card) => {
+    const input = card.querySelector("input");
+    card.classList.toggle("is-selected", input?.checked);
+  });
 }
 
 function updateNeed() {
   const teams = Number(teamCountInput.value);
   const size = Number(membersInput.value);
   const needed = teams * size;
-  const enough = Number.isInteger(needed) && needed > 0 && participants.length >= needed;
+  const pool = poolParticipants();
+  const enough = Number.isInteger(needed) && needed > 0 && pool.length >= needed;
   const game = selectedGame();
-  const label = game ? game.name : "Belum ada permainan";
-  needBox.innerHTML = `${escapeHtml(label)}: <strong>${needed || 0} orang</strong> dari ${participants.length} peserta`;
+  const mode = genderModeLabel(selectedGenderMode());
+  const label = game ? `${game.name} · ${mode}` : mode;
+  needBox.innerHTML = `${escapeHtml(label)}: <strong>${needed || 0} orang</strong> dari ${pool.length} peserta`;
   needBox.style.color = enough ? "inherit" : "var(--danger)";
+}
+
+function updateDrawPanel() {
+  updateGenderCounts();
+  const game = selectedGame();
+  selectedGameLabel.textContent = game
+    ? `Permainan terpilih: ${game.name} (${game.teamCount} grup × ${game.members} orang).`
+    : "Pilih permainan di menu Permainan.";
+  const ready = Boolean(participants.length && game);
+  configForm.classList.toggle("hidden", !ready);
+  drawEmpty.classList.toggle("hidden", ready);
+  if (!ready) {
+    drawEmpty.textContent = !participants.length
+      ? "Unggah peserta dulu di menu Peserta, lalu kembali ke Pembagian."
+      : "Tambah dan pilih permainan di menu Permainan, lalu kembali ke Pembagian.";
+  }
+  updateNeed();
 }
 
 function renderGamePicker() {
@@ -115,14 +200,14 @@ function applyGame(gameId) {
   if (!game) {
     selectedGameId = "";
     renderGamePicker();
-    updateNeed();
+    updateDrawPanel();
     return;
   }
   selectedGameId = game.id;
   teamCountInput.value = String(game.teamCount);
   membersInput.value = String(game.members);
   renderGamePicker();
-  updateNeed();
+  updateDrawPanel();
 }
 
 function closeGameEditor() {
@@ -201,7 +286,6 @@ function showParticipantData(list, name, { saved = true } = {}) {
   renderParticipants(list);
   applyGame(selectedGameId);
   show(dataPanel);
-  if (games.length) show(configForm);
   show(clearBtn);
   hide(configError);
 }
@@ -214,6 +298,7 @@ async function persistParticipants(list, name) {
   showParticipantData(saved.participants, saved.filename || name);
   setCloudStatus(`${saved.participants.length} peserta tersimpan di Cloudflare D1`);
   hide(resultPanel);
+  show(resultEmpty);
   lastResult = null;
   await refreshDrawHistory();
 }
@@ -228,8 +313,10 @@ async function readFile(file) {
 function renderResult(result) {
   lastResult = result;
   const gameLabel = result.gameName ? `${result.gameName} · ` : "";
+  const modeLabel = genderModeLabel(result.genderMode);
   const when = result.createdAt ? ` Disimpan ${formatTime(result.createdAt)}.` : "";
-  resultMeta.textContent = `${gameLabel}${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota. ${result.used} peserta terpakai dari ${result.total}.${when}`;
+  const pool = result.poolSize || result.used;
+  resultMeta.textContent = `${gameLabel}${modeLabel} · ${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota. ${result.used} peserta terpakai dari ${pool}.${when}`;
   teamsEl.innerHTML = result.teams
     .map(
       (team) => `
@@ -271,11 +358,14 @@ function renderResult(result) {
     membersInput.value = String(
       result.membersPerTeam || result.teams[0]?.members.length || selectedGame()?.members || 1,
     );
+    const modeInput = genderModes.querySelector(`input[value="${normalizeGenderMode(result.genderMode)}"]`);
+    if (modeInput) modeInput.checked = true;
     renderGamePicker();
-    updateNeed();
+    updateDrawPanel();
   }
 
   show(resultPanel);
+  hide(resultEmpty);
 }
 
 function formatTime(value) {
@@ -316,7 +406,6 @@ async function saveGame(event) {
         });
     setGames(result.games);
     applyGame(result.game.id);
-    if (participants.length) show(configForm);
     closeGameEditor();
     setCloudStatus(editingId ? `Permainan ${result.game.name} diperbarui` : `Permainan ${result.game.name} ditambahkan`);
   } catch (error) {
@@ -333,7 +422,6 @@ async function removeGame(id) {
     const result = await api(`/api/games/${encodeURIComponent(id)}`, { method: "DELETE" });
     setGames(result.games, { keepSelection: selectedGameId !== id });
     applyGame(selectedGameId);
-    if (!games.length) hide(configForm);
     closeGameEditor();
     setCloudStatus(`Permainan ${game.name} dihapus`);
   } catch (error) {
@@ -354,7 +442,7 @@ async function refreshDrawHistory(selectedId) {
     ${draws
       .map(
         (draw) =>
-          `<option value="${draw.id}" ${String(draw.id) === String(selectedId) ? "selected" : ""}>Undian #${draw.id} · ${escapeHtml(draw.gameName || "Permainan")} · ${draw.teamCount}×${draw.membersPerTeam} · ${escapeHtml(draw.createdAt)}</option>`,
+          `<option value="${draw.id}" ${String(draw.id) === String(selectedId) ? "selected" : ""}>Undian #${draw.id} · ${escapeHtml(draw.gameName || "Permainan")} · ${escapeHtml(genderModeLabel(draw.genderMode))} · ${draw.teamCount}×${draw.membersPerTeam} · ${escapeHtml(draw.createdAt)}</option>`,
       )
       .join("")}
   `;
@@ -366,6 +454,13 @@ async function runDraw() {
   if (!selectedGame()) {
     configError.textContent = "Buat dan pilih jenis permainan dulu.";
     show(configError);
+    showView("permainan");
+    return;
+  }
+  if (!participants.length) {
+    configError.textContent = "Unggah peserta dulu.";
+    show(configError);
+    showView("peserta");
     return;
   }
   try {
@@ -375,13 +470,13 @@ async function runDraw() {
         teamCount: Number(teamCountInput.value),
         membersPerTeam: Number(membersInput.value),
         gameId: selectedGameId,
-        balanceGender: Boolean(balanceGenderInput.checked),
+        genderMode: selectedGenderMode(),
       }),
     });
     renderResult(result);
     setCloudStatus(`Grup ${result.gameName} #${result.id} tersimpan di Cloudflare D1`);
     await refreshDrawHistory(result.id);
-    resultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    showView("hasil");
   } catch (error) {
     configError.textContent = error.message;
     show(configError);
@@ -391,7 +486,6 @@ async function runDraw() {
 async function loadGamesFromCloud() {
   const data = await api("/api/games");
   setGames(data.games);
-  if (!data.games.length) openGameEditor();
 }
 
 async function loadFromCloud() {
@@ -404,6 +498,7 @@ async function loadFromCloud() {
     } else {
       setCloudStatus("Belum ada data peserta di Cloudflare D1. Unggah CSV untuk menyimpan.", "muted");
       hide(clearBtn);
+      updateDrawPanel();
     }
 
     const { draws } = await api("/api/draws");
@@ -474,6 +569,7 @@ document.querySelector("#add-game").addEventListener("click", () => openGameEdit
 document.querySelector("#game-cancel").addEventListener("click", closeGameEditor);
 gameEditor.addEventListener("submit", saveGame);
 
+genderModes.addEventListener("change", updateDrawPanel);
 teamCountInput.addEventListener("input", updateNeed);
 membersInput.addEventListener("input", updateNeed);
 
@@ -482,7 +578,10 @@ configForm.addEventListener("submit", (event) => {
   runDraw();
 });
 
-document.querySelector("#reshuffle").addEventListener("click", runDraw);
+document.querySelector("#reshuffle").addEventListener("click", () => {
+  showView("pembagian");
+  runDraw();
+});
 
 document.querySelector("#export-csv").addEventListener("click", () => {
   if (!lastResult) return;
@@ -504,9 +603,11 @@ drawHistory.addEventListener("change", async () => {
   try {
     const draw = await api(`/api/draws/${id}`);
     renderResult(draw);
+    showView("hasil");
   } catch (error) {
     configError.textContent = error.message;
     show(configError);
+    showView("pembagian");
   }
 });
 
@@ -517,17 +618,29 @@ clearBtn.addEventListener("click", async () => {
     participants = [];
     lastResult = null;
     hide(dataPanel);
-    hide(configForm);
     hide(resultPanel);
+    show(resultEmpty);
     hide(clearBtn);
     hide(drawHistory);
     fileStatus.textContent = "Data Cloudflare D1 sudah dikosongkan.";
     setCloudStatus("Peserta dan undian dihapus. Jenis permainan tetap ada.", "muted");
     renderGamePicker();
+    updateDrawPanel();
+    showView("peserta");
   } catch (error) {
     setCloudStatus(error.message, "warn");
   }
 });
 
+document.querySelector("#side-nav").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-view]");
+  if (button) showView(button.dataset.view);
+});
+
+document.querySelector("#nav-toggle").addEventListener("click", openSidebar);
+navBackdrop.addEventListener("click", closeSidebar);
+
 renderGamePicker();
+updateDrawPanel();
+showView(currentView);
 loadFromCloud();

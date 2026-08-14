@@ -30,14 +30,107 @@ body {
   min-height: 100vh;
 }
 
-.page {
-  width: min(1120px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 40px 0 64px;
+.app {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  min-height: 100vh;
 }
 
-.hero {
-  margin-bottom: 28px;
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px 18px;
+  background: var(--green-dark);
+  color: #f3ead8;
+  z-index: 20;
+}
+
+.sidebar-brand strong {
+  display: block;
+  font-family: Fraunces, Georgia, serif;
+  font-size: 1.45rem;
+  line-height: 1.15;
+}
+
+.sidebar .eyebrow {
+  color: var(--gold);
+}
+
+.side-nav {
+  display: grid;
+  gap: 6px;
+}
+
+.nav-item {
+  width: 100%;
+  text-align: left;
+  height: 44px;
+  border-radius: 12px;
+  padding: 0 12px;
+  background: transparent;
+  color: #f3ead8;
+  font-weight: 600;
+}
+
+.nav-item:hover,
+.nav-item.is-active {
+  background: var(--green);
+  color: #fff;
+}
+
+.sidebar .cloud-status {
+  margin: auto 0 0;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f3ead8;
+}
+
+.sidebar .cloud-status[data-kind="warn"] {
+  background: rgba(243, 224, 214, 0.2);
+  color: #f3c0b0;
+}
+
+.sidebar .cloud-status[data-kind="muted"] {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d9cbb3;
+}
+
+.sidebar .danger {
+  width: 100%;
+}
+
+.nav-toggle {
+  display: none;
+  height: 40px;
+  border-radius: 12px;
+  padding: 0 14px;
+  background: var(--green);
+  color: #fff;
+  font-weight: 700;
+}
+
+.nav-backdrop {
+  display: none;
+}
+
+.page {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 28px 0 64px;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.topbar h1 {
+  margin: 0;
 }
 
 .eyebrow {
@@ -392,6 +485,58 @@ th {
   font-weight: 600;
 }
 
+.gender-fieldset {
+  border: 0;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.gender-fieldset legend {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.gender-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.gender-mode {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  background: #fbf6ea;
+  cursor: pointer;
+}
+
+.gender-mode input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gender-mode.is-selected {
+  border-color: var(--green);
+  background: #f4f8f4;
+  box-shadow: inset 0 0 0 1px var(--green);
+}
+
+.gender-mode span {
+  font-weight: 700;
+}
+
+.gender-mode small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .check-row input {
   width: 18px;
   height: 18px;
@@ -554,9 +699,39 @@ footer {
 }
 
 @media (max-width: 860px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: 0;
+    transform: translateX(-110%);
+    transition: transform 0.2s ease;
+    width: min(280px, 86vw);
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 25, 20, 0.35);
+    z-index: 15;
+  }
+
   .stats,
   .config-grid,
-  .game-editor {
+  .game-editor,
+  .gender-modes {
     grid-template-columns: 1fr;
   }
 
@@ -576,14 +751,20 @@ footer {
     background: #fff;
   }
 
-  .hero,
-  #upload-panel,
-  #data-panel,
-  #config-panel,
+  .sidebar,
+  .topbar,
+  .nav-backdrop,
+  #view-peserta,
+  #view-permainan,
+  #view-pembagian,
   .actions,
   .cloud-status,
   footer {
     display: none !important;
+  }
+
+  #view-hasil {
+    display: block !important;
   }
 
   .page,
