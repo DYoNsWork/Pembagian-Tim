@@ -262,15 +262,28 @@ th {
   gap: 10px;
 }
 
+.game-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .game-card {
   position: relative;
   display: grid;
-  gap: 4px;
+  gap: 10px;
   margin: 0;
   padding: 12px 14px;
   border: 1.5px solid var(--line);
   border-radius: 16px;
   background: #fbf6ea;
+  font-weight: 500;
+}
+
+.game-card label {
+  display: grid;
+  gap: 4px;
   cursor: pointer;
   font-weight: 500;
 }
@@ -309,6 +322,61 @@ th {
   line-height: 1.35;
 }
 
+.game-card-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.text-btn {
+  height: auto;
+  padding: 0;
+  background: none;
+  color: var(--green-dark);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.text-btn:hover {
+  text-decoration: underline;
+}
+
+.danger-text {
+  color: var(--danger);
+}
+
+.game-editor {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  background: #fbf6ea;
+}
+
+.game-editor.hidden {
+  display: none;
+}
+
+.game-editor label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.game-editor-wide,
+.game-editor-actions,
+.game-editor .error {
+  grid-column: 1 / -1;
+}
+
+.game-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .config-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1.4fr;
@@ -340,7 +408,8 @@ th {
   font-weight: 600;
 }
 
-input[type="number"] {
+input[type="number"],
+input[type="text"] {
   height: 46px;
   border-radius: 12px;
   border: 1px solid var(--line);
@@ -467,7 +536,8 @@ footer {
 
 @media (max-width: 860px) {
   .stats,
-  .config-grid {
+  .config-grid,
+  .game-editor {
     grid-template-columns: 1fr;
   }
 
