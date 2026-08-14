@@ -40,29 +40,99 @@ npm run dev
 npm test
 ```
 
-## Deploy ke Cloudflare
+## Deploy ke Cloudflare (langkah demi langkah)
 
-1. Masuk ke akun Cloudflare:
+Pilih salah satu cara. **Cara A** paling cocok jika ingin Cloudflare menarik kode dari GitHub. **Cara B** memakai terminal di komputer.
+
+Persiapan: akun [Cloudflare](https://dash.cloudflare.com/sign-up) (gratis), Node.js, dan repo GitHub `Pembagian-Tim`.
+
+### Cara A — Cloudflare tarik dari GitHub
+
+1. Buka [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages).
+2. Klik **Create** / **Create application**.
+3. Pilih **Import a repository** (Import a Git repository).
+4. Hubungkan akun GitHub, izinkan akses ke repo **Pembagian-Tim**.
+5. Pilih repository `DYoNsWork/Pembagian-Tim`.
+6. Isi pengaturan build:
+
+   | Pengaturan | Isi |
+   | --- | --- |
+   | Project / Worker name | `pembagian-tim` (harus sama dengan `name` di `wrangler.jsonc`) |
+   | Git branch | `main` (setelah PR digabung) atau branch fitur yang berisi kode ini |
+   | Build command | `npm run build` |
+   | Deploy command | `npx wrangler deploy` |
+
+7. Klik **Save and Deploy**. Cloudflare akan *pull* kode dari GitHub, build, lalu deploy.
+8. Setelah sukses, buka URL `https://pembagian-tim.<akun-anda>.workers.dev`.
+
+**Database peserta (wajib, sekali saja):**
+
+1. Di dashboard, buka **Storage & Databases** → **D1 SQL Database** → **Create**.
+2. Nama database: `pembagian-tim-db`.
+3. Salin **Database ID**.
+4. Di repo, buka `wrangler.jsonc`, ganti `database_id` dengan ID itu, commit, lalu push. Cloudflare akan deploy ulang otomatis.
+5. Di komputer, jalankan sekali agar tabel peserta terbuat:
+
+   ```bash
+   npx wrangler login
+   npm run db:migrate:remote
+   ```
+
+   (Aplikasi juga membuat tabel sendiri saat API pertama kali dipanggil, tapi migrasi ini lebih rapi.)
+
+Setelah itu, setiap **push ke branch yang terhubung** akan di-deploy Cloudflare secara otomatis.
+
+### Cara B — Deploy dari terminal
+
+1. Clone repo dan masuk ke foldernya:
+
+   ```bash
+   git clone https://github.com/DYoNsWork/Pembagian-Tim.git
+   cd Pembagian-Tim
+   git checkout main
+   npm install
+   ```
+
+2. Masuk ke akun Cloudflare (browser akan terbuka):
 
    ```bash
    npx wrangler login
    ```
 
-2. Buat database D1, lalu salin `database_id` ke `wrangler.jsonc`:
+3. Buat database D1:
 
    ```bash
    npx wrangler d1 create pembagian-tim-db
    ```
 
-   Ganti nilai `database_id` di `wrangler.jsonc` dengan ID yang dikembalikan perintah di atas.
+   Contoh keluaran:
 
-3. Terapkan skema ke database produksi, lalu deploy:
+   ```text
+   database_name = "pembagian-tim-db"
+   database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+   ```
+
+4. Buka `wrangler.jsonc`, ganti `database_id` dengan ID dari langkah 3. Simpan, commit, push jika perlu.
+
+5. Buat tabel di database cloud:
 
    ```bash
    npm run db:migrate:remote
+   ```
+
+6. Deploy aplikasi:
+
+   ```bash
    npm run deploy
    ```
 
-   Aplikasi akan tersedia di subdomain `*.workers.dev`, atau bisa dipasang ke custom domain di dashboard Cloudflare.
+7. Buka URL yang dicetak Wrangler, biasanya:
 
-Worker juga bisa dihubungkan ke repo ini lewat **Workers Builds** di dashboard Cloudflare agar setiap push ke `main` ikut ter-deploy.
+   `https://pembagian-tim.<akun-anda>.workers.dev`
+
+### Sesudah live
+
+1. Buka URL Workers.
+2. Unggah CSV peserta (`nama, jenis kelamin, nama cabang`).
+3. Data tersimpan di D1 Cloudflare, tidak hilang saat refresh.
+4. Bagi tim (contoh 16 tim × 4 orang). Hasil undian juga tersimpan di D1.
