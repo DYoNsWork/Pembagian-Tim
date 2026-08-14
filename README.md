@@ -61,36 +61,47 @@ Persiapan: akun [Cloudflare](https://dash.cloudflare.com/sign-up) (gratis), Node
    | Git branch | `cursor/pembagian-tim-acak-4761` sampai PR digabung ke `main` |
    | Build command | `npm run build` |
    | Deploy command | `npm run deploy` |
+   | Non-production deploy command | `npm run versions-upload` |
 
-   Jangan memakai `npx wrangler deploy` sendirian. Perintah itu tidak membangun folder HTML/CSS/JS, dan itu penyebab error *Could not detect a directory containing static files*.
+   Branch fitur memakai `wrangler versions upload`. Pakai `npm run versions-upload` agar Vite build jalan dulu.
 
 7. Klik **Save and Deploy**. Cloudflare akan *pull* kode dari GitHub, build, lalu deploy.
 8. Setelah sukses, buka URL `https://pembagian-tim.<akun-anda>.workers.dev`.
 
-### Jika build gagal: "Could not detect a directory containing static files"
+### Jika build gagal karena `assets.directory` atau static files
 
-Log yang hanya menjalankan `npx wrangler deploy` (tanpa `npm run build`) akan gagal. Perbaiki di dashboard:
+Error *missing the required directory property* atau *Could not detect a directory containing static files* berarti Wrangler dijalankan tanpa folder hasil Vite. Perbaiki di dashboard:
 
 1. Buka Worker **pembagian-tim** → **Settings** → **Build**.
-2. **Git branch:** `cursor/pembagian-tim-acak-4761` (kode aplikasi belum ada di `main` sebelum PR digabung).
+2. **Git branch:** `cursor/pembagian-tim-acak-4761`.
 3. **Build command:** `npm run build`
 4. **Deploy command:** `npm run deploy`
-5. **Save**, lalu **Retry build**.
+5. **Non-production deploy command:** `npm run versions-upload`
+6. **Save**, lalu **Retry build**.
 
-**Database peserta (wajib, sekali saja):**
+**Database peserta (wajib, sebelum deploy berhasil):**
 
-1. Di dashboard, buka **Storage & Databases** → **D1 SQL Database** → **Create**.
-2. Nama database: `pembagian-tim-db`.
-3. Salin **Database ID**.
-4. Di repo, buka `wrangler.jsonc`, ganti `database_id` dengan ID itu, commit, lalu push. Cloudflare akan deploy ulang otomatis.
-5. Di komputer, jalankan sekali agar tabel peserta terbuat:
+Error *database '00000000-0000-0000-0000-000000000001' which was not found* artinya ID di `wrangler.jsonc` masih placeholder.
+
+1. Buka [D1 SQL Database](https://dash.cloudflare.com/?to=/:account/workers/d1).
+2. **Create** → nama: `pembagian-tim-db` → **Create**.
+3. Buka database itu, salin **Database ID** (format UUID).
+4. Di `wrangler.jsonc`, ganti nilai `database_id` dengan UUID itu.
+5. Commit, push, lalu **Retry build**.
+6. Setelah Worker live, jalankan sekali:
 
    ```bash
    npx wrangler login
    npm run db:migrate:remote
    ```
 
-   (Aplikasi juga membuat tabel sendiri saat API pertama kali dipanggil, tapi migrasi ini lebih rapi.)
+   Atau dari komputer yang sudah login Wrangler:
+
+   ```bash
+   npm run setup:d1
+   git add wrangler.jsonc && git commit -m "Pasang D1 pembagian-tim-db" && git push
+   npm run db:migrate:remote
+   ```
 
 Setelah itu, setiap **push ke branch yang terhubung** akan di-deploy Cloudflare secara otomatis.
 

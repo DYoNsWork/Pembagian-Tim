@@ -4,9 +4,10 @@
   "compatibility_date": "2026-08-14",
   "main": "./worker/index.js",
   "build": {
-    "command": "npm run build"
+    "command": "npm run build && node scripts/sync-d1.mjs"
   },
   "assets": {
+    "directory": "./dist/client",
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
@@ -14,19 +15,6 @@
     {
       "binding": "DB",
       "database_name": "pembagian-tim-db",
-      // Ganti dengan ID dari `npx wrangler d1 create pembagian-tim-db` sebelum deploy.
-      "database_id": "4bf554d3-e98d-426e-8677-ca41ad829ac4"
-    }
-  ],
-  "observability": {
-    "enabled": true
-  }
-}
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "pembagian-tim-db",
-      // Ganti dengan ID dari `npx wrangler d1 create pembagian-tim-db` sebelum deploy.
       "database_id": "4bf554d3-e98d-426e-8677-ca41ad829ac4"
     }
   ],
