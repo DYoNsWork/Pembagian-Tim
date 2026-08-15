@@ -29,6 +29,7 @@ body {
 
 body {
   font-family: Outfit, "Segoe UI", sans-serif;
+  font-size: 14px;
   color: var(--ink);
   background:
     radial-gradient(circle at 88% -8%, rgba(224, 180, 92, 0.16), transparent 32%),
@@ -50,7 +51,7 @@ body {
 
 .app {
   display: grid;
-  grid-template-columns: 268px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   min-height: 100vh;
   min-width: 0;
 }
@@ -61,8 +62,8 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 24px 18px;
+  gap: 16px;
+  padding: 16px 12px;
   background:
     linear-gradient(180deg, rgba(61, 186, 138, 0.08), transparent 28%),
     #0e1614;
@@ -78,23 +79,23 @@ body {
 }
 
 .brand-mark {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 8px;
   background: linear-gradient(160deg, var(--gold), #b07a22);
   color: #16110a;
   font-weight: 800;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
 }
 
 .sidebar-brand strong {
   display: block;
-  font-family: Fraunces, Georgia, serif;
-  font-size: 1.35rem;
-  line-height: 1.15;
+  font-size: 1rem;
+  line-height: 1.2;
 }
 
 .sidebar .eyebrow {
@@ -112,8 +113,8 @@ body {
   align-items: center;
   gap: 12px;
   text-align: left;
-  min-height: 48px;
-  border-radius: 14px;
+  min-height: 40px;
+  border-radius: 10px;
   padding: 0 12px;
   background: transparent;
   color: #c5d5cd;
@@ -192,9 +193,9 @@ body {
 }
 
 .page {
-  width: min(1120px, 100%);
+  width: min(960px, 100%);
   margin: 0 auto;
-  padding: 28px 20px 64px;
+  padding: 16px 16px 48px;
   min-width: 0;
 }
 
@@ -211,25 +212,26 @@ body {
 }
 
 .eyebrow {
-  letter-spacing: 0.16em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   color: var(--gold);
   font-weight: 700;
-  margin: 0 0 8px;
+  margin: 0 0 4px;
 }
 
 h1,
 h2,
 .need-box strong,
 .bracket-head h3 {
-  font-family: Fraunces, Georgia, serif;
+  font-family: Outfit, "Segoe UI", sans-serif;
 }
 
 h1 {
-  font-size: clamp(2.1rem, 5vw, 3.2rem);
-  line-height: 1.05;
-  margin: 0 0 12px;
+  font-size: 1.2rem;
+  line-height: 1.25;
+  margin: 0 0 4px;
+  font-weight: 650;
 }
 
 .lede {
@@ -287,8 +289,8 @@ h1 {
 }
 
 select {
-  height: 46px;
-  border-radius: 12px;
+  height: 36px;
+  border-radius: 8px;
   border: 1px solid var(--line-strong);
   padding: 0 12px;
   font: inherit;
@@ -313,10 +315,10 @@ select {
 .panel {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 40%), var(--card);
   border: 1px solid var(--line);
-  border-radius: 24px;
-  padding: 22px;
-  margin-bottom: 18px;
-  box-shadow: var(--shadow);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  box-shadow: none;
 }
 
 .panel-head {
@@ -329,7 +331,8 @@ select {
 
 h2 {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.05rem;
+  font-weight: 650;
 }
 
 .ghost-link,
@@ -350,13 +353,21 @@ footer,
   text-decoration: underline;
 }
 
+.ghost-link-sm {
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
 .dropzone {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   border: 1.5px dashed var(--line-strong);
-  border-radius: 18px;
-  padding: 18px;
+  border-radius: 12px;
+  padding: 12px;
   cursor: pointer;
   background: rgba(255, 255, 255, 0.03);
   transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
@@ -370,9 +381,10 @@ footer,
 }
 
 .dropzone-mark {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 0.75rem;
   display: grid;
   place-items: center;
   background: linear-gradient(160deg, var(--green), var(--green-dark));
@@ -465,7 +477,7 @@ body:not(.can-edit-peserta) [data-person-action] {
 }
 
 .stat strong {
-  font-size: 1.4rem;
+  font-size: 1.1rem;
 }
 
 .table-wrap {
@@ -506,8 +518,7 @@ tbody tr:hover {
 }
 
 .game-fieldset legend {
-  font-family: Fraunces, Georgia, serif;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   padding: 0;
   margin-bottom: 6px;
@@ -621,14 +632,64 @@ tbody tr:hover {
   color: var(--danger);
 }
 
+.pic-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pic-picker-title {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.pic-box {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.pic-box.hidden {
+  display: none;
+}
+
+.pic-item {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+}
+
+.pic-item span {
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pic-item strong {
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
 .game-editor {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 14px;
-  padding: 16px;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
   border: 1px dashed var(--line-strong);
-  border-radius: 18px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.03);
 }
 
@@ -676,8 +737,7 @@ tbody tr:hover {
 }
 
 .gender-fieldset legend {
-  font-family: Fraunces, Georgia, serif;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 700;
   margin-bottom: 8px;
 }
@@ -756,7 +816,7 @@ textarea {
 
 input[type="number"],
 input[type="text"] {
-  height: 46px;
+  height: 36px;
 }
 
 textarea {
@@ -798,9 +858,10 @@ button {
 
 .primary,
 .secondary {
-  height: 46px;
-  border-radius: 12px;
-  padding: 0 16px;
+  height: 36px;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 0.88rem;
   font-weight: 700;
   transition: transform 0.16s ease, background 0.16s ease, filter 0.16s ease;
 }
@@ -867,8 +928,7 @@ button {
 
 .section-title {
   margin: 8px 0 12px;
-  font-family: Fraunces, Georgia, serif;
-  font-size: 1.15rem;
+  font-size: 0.95rem;
 }
 
 .teams {
@@ -947,7 +1007,7 @@ button {
 
 .bracket-head h3 {
   margin: 0;
-  font-size: 1.45rem;
+  font-size: 1.05rem;
 }
 
 .bracket-head p {
@@ -976,8 +1036,7 @@ button {
 }
 
 .bracket-champion strong {
-  font-family: Fraunces, Georgia, serif;
-  font-size: 1.15rem;
+  font-size: 1rem;
 }
 
 .bracket-board {
@@ -1158,7 +1217,7 @@ footer {
 }
 
 .auth-card h1 {
-  font-size: 1.8rem;
+  font-size: 1.25rem;
   margin: 0;
 }
 
@@ -1290,9 +1349,14 @@ footer {
   }
 
   h1 {
-    font-size: 1.35rem;
-    line-height: 1.15;
+    font-size: 1.1rem;
+    line-height: 1.2;
     overflow-wrap: anywhere;
+  }
+
+  .pic-picker,
+  .pic-box {
+    grid-template-columns: 1fr;
   }
 
   .topbar {
@@ -1400,13 +1464,13 @@ footer {
   }
 
   .auth-card h1 {
-    font-size: 1.45rem;
+    font-size: 1.15rem;
   }
 }
 
 @media (max-width: 400px) {
   h1 {
-    font-size: 1.2rem;
+    font-size: 1.05rem;
   }
 
   .bottom-nav-item span {
@@ -1444,15 +1508,15 @@ footer {
   .auth-screen,
   #view-peserta,
   #view-permainan,
-  #view-pembagian,
   #view-pengguna,
+  #draw-panel,
   .actions,
   .cloud-status,
   footer {
     display: none !important;
   }
 
-  #view-hasil {
+  #view-pembagian {
     display: block !important;
   }
 

@@ -6,6 +6,7 @@ import {
   MAX_GAMES,
   MAX_GROUPS_PER_SESSION,
   normalizeGame,
+  withPicDetails,
 } from "../src/games.js";
 import { buildKnockoutBracket, parseBracket, setMatchWinner } from "../src/bracket.js";
 import {
@@ -296,16 +297,9 @@ async function listGames(env) {
   const { results } = await env.DB.prepare(
     "SELECT id, name, members, team_count, groups_per_session, pic1_id, pic2_id, description, label_prefix, is_builtin, sort_order FROM games ORDER BY sort_order ASC, name ASC",
   ).all();
-  const people = await env.DB.prepare("SELECT id, nama FROM participants").all();
-  const names = new Map((people.results || []).map((row) => [Number(row.id), row.nama]));
-  return (results || []).map((row) => {
-    const game = gameFromRow(row);
-    return {
-      ...game,
-      pic1Name: names.get(game.pic1Id) || "",
-      pic2Name: names.get(game.pic2Id) || "",
-    };
-  });
+  const people = await env.DB.prepare("SELECT id, nama, jenis_kelamin, cabang, nomor, excluded FROM participants").all();
+  const byId = new Map((people.results || []).map((row) => [Number(row.id), personFromRow(row)]));
+  return (results || []).map((row) => withPicDetails(gameFromRow(row), byId));
 }
 
 async function createGame(env, body) {
@@ -501,6 +495,10 @@ async function createDraw(env, body) {
     pic2Id: game.pic2Id,
     pic1Name: game.pic1Name,
     pic2Name: game.pic2Name,
+    pic1Cabang: game.pic1Cabang,
+    pic2Cabang: game.pic2Cabang,
+    pic1Nomor: game.pic1Nomor,
+    pic2Nomor: game.pic2Nomor,
     bracket,
     replaced: Boolean(existing),
   };
@@ -540,6 +538,10 @@ async function getDraw(env, id) {
     groupsPerSession,
     pic1Name: game?.pic1Name || "",
     pic2Name: game?.pic2Name || "",
+    pic1Cabang: game?.pic1Cabang || "",
+    pic2Cabang: game?.pic2Cabang || "",
+    pic1Nomor: game?.pic1Nomor || "",
+    pic2Nomor: game?.pic2Nomor || "",
     bracket,
     needed: draw.team_count * draw.members_per_team,
     ...grouped,

@@ -89,6 +89,14 @@ export function parseParticipantsCsv(text) {
   return { participants, errors, delimiter };
 }
 
+export function listCabangs(participants) {
+  return [
+    ...new Set(
+      (participants || []).map((person) => String(person.cabang || "").trim() || "-"),
+    ),
+  ].sort((a, b) => a.localeCompare(b, "id"));
+}
+
 export function summarizeParticipants(participants) {
   const cabang = new Set();
   let laki = 0;

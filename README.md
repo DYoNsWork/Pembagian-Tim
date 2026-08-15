@@ -4,7 +4,7 @@ Aplikasi web untuk membagi peserta ke dalam **grup permainan** secara acak. Data
 
 Pilih atau **buat sendiri** jenis permainan. Katalog mulai **kosong**. Bagi grup dengan komposisi **campur** (acak murni dari semua peserta), **laki-laki saja**, atau **perempuan saja**. Di HP, menu ada di **bawah layar**.
 
-Masuk dengan akun. Admin bisa **tambah pengguna** dan memberi hak akses per menu: Peserta, Permainan, Pembagian, Hasil, atau Pengguna.
+Masuk dengan akun. Admin bisa **tambah pengguna** dan memberi hak akses per menu: Peserta, Permainan, Pembagian, atau Pengguna. Hak **hasil** tetap ada untuk penonton, tapi tampil di menu Pembagian.
 
 Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disimpan di **Cloudflare D1**.
 
@@ -21,15 +21,13 @@ Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disi
 
 2. Unggah CSV di aplikasi. Data langsung tersimpan di D1, jadi tetap ada setelah halaman di-refresh.
 
-3. Di menu **Permainan**, tambah jenis permainan: nama, penjelasan, jumlah grup, peserta per grup, **grup per sesi**, dan **2 PIC**. PIC tidak masuk ke grup saat pengacakan.
+3. Di menu **Permainan**, tambah jenis permainan: nama, penjelasan, jumlah grup, peserta per grup, **grup per sesi**, dan **2 PIC**. Untuk tiap PIC, pilih **cabang** dulu, lalu peserta dari cabang itu. PIC tidak masuk ke grup saat pengacakan. Nama, nomor, dan cabang PIC tampil di kartu permainan serta di halaman pembagian/hasil.
 
-4. Di menu **Pembagian**, pilih permainan dari menu tarik-turun, lalu pilih komposisi grup: **campur** (acak semua peserta, tanpa merata laki-laki/perempuan), **laki-laki saja**, atau **perempuan saja**. Setiap jenis lomba hanya punya **satu hasil acak**; membagi lagi mengganti hasil sebelumnya. Grup diberi nama sederhana (`Tim 1`, `Tim 2`, …); judul permainan tampil terpisah.
+4. Di menu **Pembagian**, pilih permainan, lihat PIC-nya, lalu pilih komposisi grup: **campur**, **laki-laki saja**, atau **perempuan saja**. Hasil undian (daftar tim + bagan gugur) tampil di halaman yang sama. Setiap jenis lomba hanya punya **satu hasil acak**; membagi lagi mengganti hasil sebelumnya. Grup diberi nama sederhana (`Tim 1`, `Tim 2`, …).
 
    Contoh: permainan “Gobak sodor” dengan 8 grup × 8 orang membutuhkan 64 peserta dari kumpulan yang dipilih. Jika lebih, sisanya masuk cadangan. Jika kurang, aplikasi menampilkan peringatan. Dengan 2 grup per sesi, bagan gugur membuat 4 pertandingan babak awal, lalu semifinal dan final.
 
-5. Hasil undian ada di menu **Hasil**, satu per permainan: daftar grup plus **bagan sistem gugur**. Klik grup pemenang di setiap sesi agar maju ke babak berikutnya. Bisa diganti dengan acak ulang.
-
-Gunakan **menu samping** di komputer, atau **menu bawah** di HP: Peserta, Permainan, Pembagian, Hasil, dan Pengguna (jika punya hak).
+Gunakan **menu samping** di komputer, atau **menu bawah** di HP: Peserta, Permainan, Pembagian, dan Pengguna (jika punya hak).
 
 Saat pertama kali dibuka, buat akun **admin**. Admin lalu menambah panitia atau penonton dan memilih hak aksesnya.
 
@@ -167,4 +165,4 @@ Setelah itu, setiap **push ke branch yang terhubung** akan di-deploy Cloudflare 
 1. Buka URL Workers.
 2. Unggah CSV peserta (`nama, jenis kelamin, nama cabang, nomor`) atau kelola peserta satu per satu.
 3. Data tersimpan di D1 Cloudflare, tidak hilang saat refresh.
-4. Tambah permainan (termasuk 2 PIC dan grup per sesi), pilih campur/laki-laki/perempuan, lalu bagi grup. Hasil dan bagan gugur ada di menu Hasil.
+4. Tambah permainan (2 PIC dipilih dari cabang, plus grup per sesi), lalu bagi grup. Hasil dan bagan gugur ada di menu Pembagian.

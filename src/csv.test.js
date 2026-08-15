@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeGender, parseParticipantsCsv, summarizeParticipants } from "./csv.js";
+import { listCabangs, normalizeGender, parseParticipantsCsv, summarizeParticipants } from "./csv.js";
 
 const SAMPLE = `Andi,L,Jakarta,01
 Siti,P,Bandung,02
@@ -57,6 +57,15 @@ describe("parseParticipantsCsv", () => {
 
   it("gagal jika file kosong", () => {
     expect(() => parseParticipantsCsv(" \n ")).toThrow(/kosong/i);
+  });
+});
+
+describe("listCabangs", () => {
+  it("mengambil cabang unik terurut", () => {
+    expect(listCabangs([{ cabang: "Medan" }, { cabang: "Bandung" }, { cabang: "Medan" }])).toEqual([
+      "Bandung",
+      "Medan",
+    ]);
   });
 });
 

@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/style.css" />
@@ -76,12 +76,8 @@
             <span class="nav-index">03</span>
             <span>Pembagian</span>
           </button>
-          <button type="button" class="nav-item" data-view="hasil">
-            <span class="nav-index">04</span>
-            <span>Hasil</span>
-          </button>
           <button type="button" class="nav-item hidden" data-view="pengguna">
-            <span class="nav-index">05</span>
+            <span class="nav-index">04</span>
             <span>Pengguna</span>
           </button>
         </nav>
@@ -111,7 +107,7 @@
             <section class="panel" id="upload-panel">
               <div class="panel-head">
                 <h2>Unggah data peserta</h2>
-                <a class="ghost-link" href="./contoh-peserta.csv" download>Unduh contoh CSV</a>
+                <a class="ghost-link ghost-link-sm" href="./contoh-peserta.csv" download>Unduh CSV</a>
               </div>
               <label class="dropzone" id="dropzone" for="file-input">
                 <input id="file-input" type="file" accept=".csv,text/csv" hidden />
@@ -192,8 +188,8 @@
                 <p class="hint">
                   Katalog mulai kosong. Tambah permainan dengan nama, penjelasan, jumlah
                   grup, peserta per grup, dan berapa grup bertanding di setiap sesi.
-                  Saat membagi grup, pilih permainan dari menu tarik-turun di halaman
-                  Pembagian. Hasil undian sekaligus membuat bagan sistem gugur.
+                  Saat membagi grup, pilih permainan di menu Pembagian.
+                  Hasil undian dan bagan gugur tampil di halaman yang sama.
                 </p>
                 <div class="game-toolbar">
                   <button type="button" class="secondary" id="add-game">Tambah permainan</button>
@@ -222,20 +218,38 @@
                     Grup per sesi
                     <input id="game-groups-per-session" type="number" min="2" max="16" step="1" required placeholder="2" />
                   </label>
-                  <label>
-                    PIC 1
-                    <select id="game-pic-1" required>
-                      <option value="">Pilih PIC 1</option>
-                    </select>
-                  </label>
-                  <label>
-                    PIC 2
-                    <select id="game-pic-2" required>
-                      <option value="">Pilih PIC 2</option>
-                    </select>
-                  </label>
+                  <div class="pic-picker game-editor-wide">
+                    <p class="pic-picker-title">PIC 1</p>
+                    <label>
+                      Cabang
+                      <select id="game-pic-1-cabang" required>
+                        <option value="">Pilih cabang</option>
+                      </select>
+                    </label>
+                    <label>
+                      Peserta
+                      <select id="game-pic-1" required>
+                        <option value="">Pilih peserta</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="pic-picker game-editor-wide">
+                    <p class="pic-picker-title">PIC 2</p>
+                    <label>
+                      Cabang
+                      <select id="game-pic-2-cabang" required>
+                        <option value="">Pilih cabang</option>
+                      </select>
+                    </label>
+                    <label>
+                      Peserta
+                      <select id="game-pic-2" required>
+                        <option value="">Pilih peserta</option>
+                      </select>
+                    </label>
+                  </div>
                   <p class="hint game-editor-wide">
-                    PIC tidak masuk ke grup saat pengacakan.
+                    Pilih cabang dulu, lalu peserta dari cabang itu. PIC tidak masuk ke grup saat pengacakan.
                   </p>
                   <p class="hint game-editor-wide">
                     Berapa grup bertanding di setiap sesi. 2 = satu lawan satu.
@@ -252,7 +266,7 @@
           </section>
 
           <section class="view hidden" id="view-pembagian">
-            <section class="panel">
+            <section class="panel" id="draw-panel">
               <div class="panel-head">
                 <h2>Bagi grup</h2>
               </div>
@@ -267,6 +281,7 @@
                   </select>
                 </label>
                 <p class="hint" id="selected-game-label">Pilih permainan yang akan diundi.</p>
+                <div class="pic-box hidden" id="draw-pic-box"></div>
                 <p class="hint hidden" id="draw-replace-hint">
                   Permainan ini sudah punya hasil acak. Membagi lagi akan mengganti hasil yang ada.
                 </p>
@@ -307,30 +322,27 @@
                 <p class="hint">
                   Campur mengacak semua peserta tanpa membedakan laki-laki atau
                   perempuan. Mode laki-laki atau perempuan hanya memakai peserta sesuai
-                  pilihan. Pengacakan tidak melihat cabang. Bagan sistem gugur mengikuti
-                  jumlah grup per sesi pada definisi permainan.
+                  pilihan. PIC dan peserta yang di-exclude tidak masuk grup.
                 </p>
                 <p class="error hidden" id="config-error"></p>
               </form>
             </section>
-          </section>
-
-          <section class="view hidden" id="view-hasil">
             <section class="panel hidden" id="result-panel">
               <div class="panel-head">
-                <h2 id="result-title">Grup permainan</h2>
+                <h2 id="result-title">Hasil pembagian</h2>
                 <div class="actions">
                   <select id="draw-history" class="hidden" aria-label="Hasil per permainan"></select>
                   <button type="button" class="secondary" id="reshuffle">Acak ulang</button>
                 </div>
               </div>
+              <div class="pic-box hidden" id="result-pic-box"></div>
               <p class="result-meta" id="result-meta"></p>
               <h3 class="section-title">Daftar tim</h3>
               <div class="teams" id="teams"></div>
               <section class="bracket hidden" id="bracket"></section>
               <div class="leftover hidden" id="leftover"></div>
             </section>
-            <p class="empty-games" id="result-empty">Belum ada hasil pembagian. Bagi grup di menu <strong>Pembagian</strong> untuk melihat daftar grup dan bagan gugur.</p>
+            <p class="empty-games" id="result-empty">Belum ada hasil. Bagi grup di atas untuk melihat daftar tim dan bagan gugur.</p>
           </section>
 
           <section class="view hidden" id="view-pengguna">
@@ -341,7 +353,7 @@
               </div>
               <p class="hint">
                 Setiap akun mendapat peran dan hak akses menu. Admin bisa mengatur semua.
-                Panitia mengelola undian. Penonton hanya melihat hasil.
+                Panitia mengelola undian. Penonton hanya melihat hasil di menu Pembagian.
               </p>
               <div class="user-list" id="user-list"></div>
               <form id="user-editor" class="user-editor hidden">
@@ -382,8 +394,8 @@
 
         <footer>
           <p>
-            Di HP, pakai menu bawah. Di komputer, pakai menu samping. Masuk dengan akun
-            yang punya hak akses, lalu unggah peserta, atur permainan, dan bagi grup.
+            Di HP pakai menu bawah. Di komputer pakai menu samping. Unggah peserta, atur
+            permainan, lalu bagi grup di menu Pembagian.
           </p>
         </footer>
       </div>
@@ -399,10 +411,6 @@
         <button type="button" class="bottom-nav-item" data-view="pembagian">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 4v2H4v4h2V8h4v2l3-3-3-3Zm4 10 3 3-3 3v-2H8v-2h6Zm7-5-3-3v2h-4v2h4v2Z"/></svg>
           <span>Bagi</span>
-        </button>
-        <button type="button" class="bottom-nav-item" data-view="hasil">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 4h6v7H5Zm8 0h6v4h-6Zm0 6h6v10h-6ZM5 13h6v7H5Z"/></svg>
-          <span>Hasil</span>
         </button>
         <button type="button" class="bottom-nav-item hidden" data-view="pengguna">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3ZM8 13c-3.3 0-6 1.7-6 3.5V18h8v-1.5C10 14.7 8.7 13 8 13Zm8 0c-.3 0-.7 0-1 .1 1.2.8 2 2 2 3.4V18h7v-1.5c0-1.8-2.7-3.5-6-3.5Z"/></svg>

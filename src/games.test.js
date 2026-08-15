@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getGame, normalizeGame, slugifyGameId, uniqueGameId } from "./games.js";
+import { formatPicLine, getGame, normalizeGame, slugifyGameId, uniqueGameId } from "./games.js";
 
 describe("getGame", () => {
   it("mengembalikan null jika katalog kosong", () => {
@@ -78,5 +78,13 @@ describe("normalizeGame", () => {
     expect(() => normalizeGame({ name: "Tes", teamCount: 4, members: 4, pic1Id: 1, pic2Id: 1 })).toThrow(
       /berbeda/i,
     );
+  });
+});
+
+describe("formatPicLine", () => {
+  it("menampilkan nama, nomor, dan cabang PIC", () => {
+    expect(formatPicLine("Andi", "Jakarta", "01")).toBe("Andi (01) · Jakarta");
+    expect(formatPicLine("Siti", "Bandung", "")).toBe("Siti · Bandung");
+    expect(formatPicLine("", "Jakarta", "01")).toBe("");
   });
 });

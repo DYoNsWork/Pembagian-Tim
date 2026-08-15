@@ -1,6 +1,6 @@
-import { parseParticipantsCsv, summarizeParticipants } from "./csv.js";
+import { listCabangs, parseParticipantsCsv, summarizeParticipants } from "./csv.js";
 import { eligibleParticipants, genderModeLabel, normalizeGenderMode } from "./teams.js";
-import { getGame } from "./games.js";
+import { formatPicLine, getGame } from "./games.js";
 import { api } from "./api.js";
 import {
   RIGHTS,
@@ -8,13 +8,13 @@ import {
   firstAllowedView,
   hasRight,
   rightsForRole,
+  viewForRight,
 } from "./auth.js";
 
 const VIEWS = {
   peserta: { eyebrow: "Peserta", title: "Data peserta" },
   permainan: { eyebrow: "Permainan", title: "Jenis permainan" },
-  pembagian: { eyebrow: "Pembagian", title: "Bagi grup" },
-  hasil: { eyebrow: "Hasil", title: "Grup permainan" },
+  pembagian: { eyebrow: "Pembagian", title: "Bagi grup & hasil" },
   pengguna: { eyebrow: "Pengguna", title: "Hak akses" },
 };
 
@@ -43,8 +43,12 @@ const gameNameInput = document.querySelector("#game-name");
 const gameTeamCountInput = document.querySelector("#game-team-count");
 const gameMembersInput = document.querySelector("#game-members");
 const gameGroupsPerSessionInput = document.querySelector("#game-groups-per-session");
+const gamePic1Cabang = document.querySelector("#game-pic-1-cabang");
+const gamePic2Cabang = document.querySelector("#game-pic-2-cabang");
 const gamePic1Input = document.querySelector("#game-pic-1");
 const gamePic2Input = document.querySelector("#game-pic-2");
+const drawPicBox = document.querySelector("#draw-pic-box");
+const resultPicBox = document.querySelector("#result-pic-box");
 const gameDescriptionInput = document.querySelector("#game-description");
 const participantEditor = document.querySelector("#participant-editor");
 const participantCards = document.querySelector("#participant-cards");
@@ -127,34 +131,41 @@ function can(right) {
   return hasRight(currentUser, right);
 }
 
+function canOpenView(name) {
+  const view = viewForRight(name);
+  if (view === "pembagian") return can("pembagian") || can("hasil");
+  return can(view);
+}
+
 function showView(name) {
-  if (!VIEWS[name]) return;
-  if (!can(name)) {
+  const view = viewForRight(name);
+  if (!VIEWS[view]) return;
+  if (!canOpenView(view)) {
     const fallback = firstAllowedView(currentUser);
-    if (fallback && fallback !== name) {
+    if (fallback && fallback !== view) {
       showView(fallback);
     }
     return;
   }
-  currentView = name;
-  document.querySelectorAll(".view").forEach((view) => {
-    view.classList.toggle("hidden", view.id !== `view-${name}`);
+  currentView = view;
+  document.querySelectorAll(".view").forEach((section) => {
+    section.classList.toggle("hidden", section.id !== `view-${view}`);
   });
   document.querySelectorAll("[data-view]").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.view === name);
+    button.classList.toggle("is-active", viewForRight(button.dataset.view) === view);
   });
-  viewEyebrow.textContent = VIEWS[name].eyebrow;
+  viewEyebrow.textContent = VIEWS[view].eyebrow;
   viewTitle.textContent =
-    name === "hasil" && lastResult?.gameName ? lastResult.gameName : VIEWS[name].title;
+    view === "pembagian" && lastResult?.gameName ? lastResult.gameName : VIEWS[view].title;
   closeSidebar();
-  if (name === "pembagian") updateDrawPanel();
-  if (name === "permainan" && !games.length && can("permainan")) openGameEditor();
-  if (name === "pengguna") loadUsers();
+  if (view === "pembagian") updateDrawPanel();
+  if (view === "permainan" && !games.length && can("permainan")) openGameEditor();
+  if (view === "pengguna") loadUsers();
 }
 
 function applyAccessUi() {
   document.querySelectorAll("[data-view]").forEach((button) => {
-    button.classList.toggle("hidden", !can(button.dataset.view));
+    button.classList.toggle("hidden", !canOpenView(button.dataset.view));
   });
   const name = currentUser?.displayName || currentUser?.username || "Pengguna";
   const role = currentUser?.role || "";
@@ -167,6 +178,7 @@ function applyAccessUi() {
   document.body.classList.toggle("can-edit-peserta", can("peserta"));
   document.querySelector("#reshuffle")?.classList.toggle("hidden", !can("pembagian"));
   document.querySelector("#upload-panel")?.classList.toggle("hidden", !can("peserta"));
+  document.querySelector("#draw-panel")?.classList.toggle("hidden", !can("pembagian"));
 }
 
 function selectedRights() {
@@ -218,18 +230,16 @@ function updateDrawPanel() {
   const game = selectedGame();
   const existing = draws.find((draw) => draw.gameId === selectedGameId);
   selectedGameLabel.textContent = game
-    ? `${game.name}: ${game.teamCount} grup × ${game.members} orang · ${game.groupsPerSession} grup per sesi.${
-        game.pic1Name || game.pic2Name
-          ? ` PIC: ${[game.pic1Name, game.pic2Name].filter(Boolean).join(" & ")}.`
-          : ""
-      }`
+    ? `${game.name}: ${game.teamCount} grup × ${game.members} orang · ${game.groupsPerSession} grup per sesi.`
     : "Pilih permainan dari menu tarik-turun.";
+  renderPicBox(drawPicBox, game);
   drawReplaceHint.classList.toggle("hidden", !existing);
   drawSubmit.textContent = existing ? "Ganti hasil acak" : "Bagi grup secara acak";
   const ready = Boolean(participants.length && games.length);
-  configForm.classList.toggle("hidden", !ready);
-  drawEmpty.classList.toggle("hidden", ready);
-  if (!ready) {
+  const canDraw = can("pembagian");
+  configForm.classList.toggle("hidden", !canDraw || !ready);
+  drawEmpty.classList.toggle("hidden", !canDraw || ready);
+  if (canDraw && !ready) {
     drawEmpty.textContent = !participants.length
       ? "Unggah peserta dulu di menu Peserta, lalu kembali ke Pembagian."
       : "Tambah permainan di menu Permainan, lalu pilih dari menu tarik-turun di Pembagian.";
@@ -254,7 +264,8 @@ function renderGamePicker() {
         <div class="game-card-body">
           <span class="game-card-name">${escapeHtml(game.name)}</span>
           <span class="game-card-size">${game.teamCount} grup · ${game.members} orang · ${game.groupsPerSession} /sesi</span>
-          <span class="game-card-size">PIC: ${escapeHtml([game.pic1Name, game.pic2Name].filter(Boolean).join(" & ") || "belum dipilih")}</span>
+          <span class="game-card-size">PIC 1: ${escapeHtml(formatPicLine(game.pic1Name, game.pic1Cabang, game.pic1Nomor) || "belum dipilih")}</span>
+          <span class="game-card-size">PIC 2: ${escapeHtml(formatPicLine(game.pic2Name, game.pic2Cabang, game.pic2Nomor) || "belum dipilih")}</span>
           <span class="game-card-desc">${escapeHtml(game.description || "Tidak ada penjelasan.")}</span>
         </div>
         <div class="game-card-actions">
@@ -329,18 +340,56 @@ function openGameEditor(game) {
   gameNameInput.focus();
 }
 
-function fillPicSelects(pic1Id, pic2Id) {
-  const options = [
-    `<option value="">Pilih PIC</option>`,
-    ...participants.map(
+function personById(id) {
+  return participants.find((person) => Number(person.id) === Number(id));
+}
+
+function fillPicPair(cabangSelect, personSelect, cabang, personId) {
+  const cabangs = listCabangs(participants);
+  cabangSelect.innerHTML = [
+    `<option value="">Pilih cabang</option>`,
+    ...cabangs.map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`),
+  ].join("");
+  const chosen = cabang && cabangs.includes(cabang) ? cabang : "";
+  cabangSelect.value = chosen;
+  const people = chosen ? participants.filter((person) => person.cabang === chosen) : [];
+  personSelect.innerHTML = [
+    `<option value="">Pilih peserta</option>`,
+    ...people.map(
       (person) =>
         `<option value="${person.id}">${escapeHtml(person.nama)}${person.nomor ? ` (${escapeHtml(person.nomor)})` : ""}</option>`,
     ),
   ].join("");
-  gamePic1Input.innerHTML = options;
-  gamePic2Input.innerHTML = options;
-  gamePic1Input.value = pic1Id ? String(pic1Id) : "";
-  gamePic2Input.value = pic2Id ? String(pic2Id) : "";
+  personSelect.value =
+    personId && people.some((person) => Number(person.id) === Number(personId)) ? String(personId) : "";
+  personSelect.disabled = !chosen;
+}
+
+function fillPicSelects(pic1Id, pic2Id) {
+  const pic1 = personById(pic1Id);
+  const pic2 = personById(pic2Id);
+  fillPicPair(gamePic1Cabang, gamePic1Input, pic1?.cabang, pic1Id);
+  fillPicPair(gamePic2Cabang, gamePic2Input, pic2?.cabang, pic2Id);
+}
+
+function renderPicBox(el, source) {
+  if (!el) return;
+  const items = [
+    { label: "PIC 1", text: formatPicLine(source?.pic1Name, source?.pic1Cabang, source?.pic1Nomor) },
+    { label: "PIC 2", text: formatPicLine(source?.pic2Name, source?.pic2Cabang, source?.pic2Nomor) },
+  ].filter((item) => item.text);
+  if (!items.length) {
+    el.innerHTML = "";
+    el.classList.add("hidden");
+    return;
+  }
+  el.classList.remove("hidden");
+  el.innerHTML = items
+    .map(
+      (item) =>
+        `<div class="pic-item"><span>${item.label}</span><strong>${escapeHtml(item.text)}</strong></div>`,
+    )
+    .join("");
 }
 
 function renderParticipants(list) {
@@ -540,9 +589,6 @@ function renderResult(result) {
     `<span class="meta-chip">${escapeHtml(modeLabel)}</span>`,
     `<span class="meta-chip">${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota</span>`,
     result.groupsPerSession ? `<span class="meta-chip">${result.groupsPerSession} grup per sesi</span>` : "",
-    result.pic1Name || result.pic2Name
-      ? `<span class="meta-chip">PIC: ${escapeHtml([result.pic1Name, result.pic2Name].filter(Boolean).join(" & "))}</span>`
-      : "",
     `<span class="meta-chip">${result.used} / ${pool} peserta</span>`,
     result.createdAt ? `<span class="meta-chip muted-chip">${escapeHtml(formatTime(result.createdAt))}</span>` : "",
   ].join("");
@@ -571,6 +617,8 @@ function renderResult(result) {
       `,
     )
     .join("");
+
+  renderPicBox(resultPicBox, result);
 
   if (result.leftover.length) {
     leftoverEl.classList.remove("hidden");
@@ -804,7 +852,7 @@ async function runDraw({ confirmReplace = true } = {}) {
         : `Grup ${result.gameName} tersimpan di Cloudflare D1`,
     );
     await refreshDrawHistory(result.id);
-    showView("hasil");
+    showView("pembagian");
   } catch (error) {
     configError.textContent = error.message;
     show(configError);
@@ -1058,6 +1106,12 @@ gameGrid.addEventListener("click", (event) => {
 document.querySelector("#add-game").addEventListener("click", () => openGameEditor());
 document.querySelector("#game-cancel").addEventListener("click", closeGameEditor);
 gameEditor.addEventListener("submit", saveGame);
+gamePic1Cabang.addEventListener("change", () => {
+  fillPicPair(gamePic1Cabang, gamePic1Input, gamePic1Cabang.value, "");
+});
+gamePic2Cabang.addEventListener("change", () => {
+  fillPicPair(gamePic2Cabang, gamePic2Input, gamePic2Cabang.value, "");
+});
 
 genderModes.addEventListener("change", updateDrawPanel);
 drawGameSelect.addEventListener("change", () => {
@@ -1116,7 +1170,7 @@ drawHistory.addEventListener("change", async () => {
   try {
     const draw = await api(`/api/draws/${id}`);
     renderResult(draw);
-    showView("hasil");
+    showView("pembagian");
   } catch (error) {
     configError.textContent = error.message;
     show(configError);

@@ -28,8 +28,10 @@ describe("RBAC", () => {
     expect(hasRight({ role: "panitia", rights }, "pengguna")).toBe(false);
   });
 
-  it("penonton hanya hasil", () => {
-    expect(firstAllowedView({ role: "penonton", rights: rightsForRole("penonton") })).toBe("hasil");
+  it("penonton hanya hasil, dibuka di menu pembagian", () => {
+    expect(firstAllowedView({ role: "penonton", rights: rightsForRole("penonton") })).toBe(
+      "pembagian",
+    );
   });
 
   it("membaca user dari baris database", () => {
