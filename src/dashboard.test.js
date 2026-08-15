@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { bracketProgress, gameProgressRows, participationCounts } from "./dashboard.js";
+import {
+  bracketProgress,
+  gameProgressRows,
+  participantLeaderboard,
+  participationCounts,
+  winCounts,
+} from "./dashboard.js";
 
 describe("bracketProgress", () => {
   it("menghitung persentase sesi yang sudah punya pemenang", () => {
@@ -43,6 +49,66 @@ describe("participationCounts", () => {
     ).toEqual([
       { nama: "Putri", cabang: "Botania", count: 2 },
       { nama: "Putri", cabang: "Prima", count: 1 },
+    ]);
+  });
+});
+
+describe("winCounts", () => {
+  it("menghitung kemenangan sesi per peserta", () => {
+    expect(
+      winCounts([
+        {
+          members: [
+            { team_number: 1, nama: "Andi", cabang: "Jakarta" },
+            { team_number: 2, nama: "Budi", cabang: "Bandung" },
+          ],
+          bracket: {
+            rounds: [
+              {
+                matches: [
+                  {
+                    teams: [{ number: 1, name: "Tim 1" }, { number: 2, name: "Tim 2" }],
+                    winnerNumber: 1,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ]),
+    ).toEqual([{ nama: "Andi", cabang: "Jakarta", wins: 1 }]);
+  });
+});
+
+describe("participantLeaderboard", () => {
+  it("menggabungkan partisipasi dan kemenangan", () => {
+    expect(
+      participantLeaderboard(
+        [
+          { team_number: 1, nama: "Andi", cabang: "Jakarta" },
+          { team_number: 1, nama: "Andi", cabang: "Jakarta" },
+          { team_number: 1, nama: "Siti", cabang: "Bandung" },
+        ],
+        [
+          {
+            members: [
+              { team_number: 1, nama: "Andi", cabang: "Jakarta" },
+              { team_number: 2, nama: "Budi", cabang: "Surabaya" },
+            ],
+            bracket: {
+              rounds: [
+                {
+                  matches: [{ teams: [{ number: 1, name: "Tim 1" }], winnerNumber: 1 }],
+                },
+              ],
+            },
+          },
+        ],
+        5,
+      ),
+    ).toEqual([
+      { nama: "Andi", cabang: "Jakarta", games: 2, wins: 1 },
+      { nama: "Siti", cabang: "Bandung", games: 1, wins: 0 },
     ]);
   });
 });

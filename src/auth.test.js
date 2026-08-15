@@ -28,9 +28,9 @@ describe("RBAC", () => {
     expect(hasRight({ role: "panitia", rights }, "pengguna")).toBe(false);
   });
 
-  it("penonton hanya hasil, dibuka di menu pembagian", () => {
+  it("penonton dibuka di dashboard", () => {
     expect(firstAllowedView({ role: "penonton", rights: rightsForRole("penonton") })).toBe(
-      "pembagian",
+      "dashboard",
     );
   });
 

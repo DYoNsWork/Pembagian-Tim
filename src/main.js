@@ -13,7 +13,7 @@ import {
 
 const VIEWS = {
   peserta: { eyebrow: "Peserta", title: "Data peserta" },
-  dashboard: { eyebrow: "Dashboard", title: "Progress permainan" },
+  dashboard: { eyebrow: "Dashboard", title: "Beranda" },
   permainan: { eyebrow: "Permainan", title: "Jenis permainan" },
   pembagian: { eyebrow: "Pembagian", title: "Bagi grup & hasil" },
   pengguna: { eyebrow: "Pengguna", title: "Hak akses" },
@@ -30,7 +30,7 @@ const drawEmpty = document.querySelector("#draw-empty");
 const statsEl = document.querySelector("#stats");
 const rowsEl = document.querySelector("#participant-rows");
 const participantSortSelect = document.querySelector("#participant-sort");
-const drawSummary = document.querySelector("#draw-summary");
+const drawInfo = document.querySelector("#draw-info");
 const drawPoolHint = document.querySelector("#draw-pool-hint");
 const drawLockedHint = document.querySelector("#draw-locked-hint");
 const drawGameSelect = document.querySelector("#draw-game");
@@ -56,7 +56,6 @@ const gameError = document.querySelector("#game-error");
 const configForm = document.querySelector("#config-form");
 const configError = document.querySelector("#config-error");
 const tourneyBoard = document.querySelector("#tourney-board");
-const leftoverEl = document.querySelector("#leftover");
 const cloudStatus = document.querySelector("#cloud-status");
 const clearBtn = document.querySelector("#clear-cloud");
 const dashboardGames = document.querySelector("#dashboard-games");
@@ -78,7 +77,7 @@ let participants = [];
 let games = [];
 let lastResult = null;
 let selectedGameId = "";
-let currentView = "peserta";
+let currentView = "dashboard";
 let draws = [];
 let currentUser = null;
 let users = [];
@@ -202,36 +201,131 @@ function setGames(list, { keepSelection = true } = {}) {
   updateDrawPanel();
 }
 
-function renderDrawSummary(game) {
+function renderDrawInfo(game, existingDraw) {
   if (!game) {
-    hide(drawSummary);
-    drawSummary.innerHTML = "";
+    hide(drawInfo);
+    drawInfo.innerHTML = "";
     return;
   }
+
   const needed = game.teamCount * game.members;
   const pool = poolForGame(game);
   const enough = pool.length >= needed;
-  show(drawSummary);
-  const chips = [
-    genderModeLabel(game.genderMode),
-    `${game.teamCount} grup × ${game.members} org`,
-    `${game.groupsPerSession} tim / sesi`,
-    `${pool.length}/${needed} peserta`,
-  ];
+  const firstRoundSessions = Math.max(1, Math.ceil(game.teamCount / game.groupsPerSession));
   const pic1 = formatPicLine(game.pic1Name, game.pic1Cabang);
   const pic2 = formatPicLine(game.pic2Name, game.pic2Cabang);
-  if (pic1) chips.push(`PIC 1: ${pic1}`);
-  if (pic2) chips.push(`PIC 2: ${pic2}`);
-  drawSummary.innerHTML = chips
-    .map(
-      (text, index) =>
-        `<span class="summary-chip${index === 3 && !enough ? " is-warn" : ""}">${escapeHtml(text)}</span>`,
-    )
-    .join("");
+  const drawDone = Boolean(existingDraw);
+  let drawMeta = "Belum diacak";
+  if (drawDone && lastResult?.gameId === game.id && lastResult?.bracket?.champion) {
+    drawMeta = `Selesai · Juara ${lastResult.bracket.champion.name}`;
+  } else if (drawDone && lastResult?.gameId === game.id) {
+    drawMeta = `Berjalan · ${bracketProgressLabel(lastResult.bracket)}`;
+  } else if (drawDone) {
+    drawMeta = "Sudah diacak";
+  }
+
+  show(drawInfo);
+  drawInfo.innerHTML = `
+    <header class="draw-info-head">
+      <div>
+        <h3>${escapeHtml(game.name)}</h3>
+        ${game.description ? `<p class="draw-info-desc">${escapeHtml(game.description)}</p>` : ""}
+      </div>
+      <span class="draw-info-status${drawDone ? " is-done" : ""}${enough ? "" : " is-warn"}">${escapeHtml(drawMeta)}</span>
+    </header>
+    <dl class="draw-info-grid">
+      <div><dt>Komposisi</dt><dd>${escapeHtml(genderModeLabel(game.genderMode))}</dd></div>
+      <div><dt>Struktur grup</dt><dd>${game.teamCount} grup × ${game.members} org</dd></div>
+      <div><dt>Kebutuhan peserta</dt><dd>${needed} org</dd></div>
+      <div><dt>Grup per sesi</dt><dd>${game.groupsPerSession} tim (${firstRoundSessions} sesi babak awal)</dd></div>
+      <div><dt>Peserta siap</dt><dd class="${enough ? "" : "is-warn"}">${pool.length} / ${needed}</dd></div>
+      <div><dt>PIC</dt><dd>${escapeHtml(pic1 || "—")}<br />${escapeHtml(pic2 || "—")}</dd></div>
+    </dl>`;
   drawPoolHint.textContent = enough
-    ? "Parameter dari definisi permainan. Klik Acak grup jika belum diundi."
+    ? drawDone
+      ? "Hasil undian dan bagan gugur tampil di bawah."
+      : "Parameter dari menu Permainan. Klik Acak grup untuk memulai."
     : `Peserta tidak cukup (${pool.length}/${needed} setelah PIC & exclude).`;
   drawPoolHint.classList.toggle("is-warn", !enough);
+}
+
+function bracketProgressLabel(bracket) {
+  if (!bracket?.rounds?.length) return "0% sesi";
+  let total = 0;
+  let done = 0;
+  for (const round of bracket.rounds) {
+    for (const match of round.matches || []) {
+      const teams = (match.teams || []).filter((team) => team && !team.pending);
+      if (teams.length < 1) continue;
+      total += 1;
+      if (match.winnerNumber) done += 1;
+    }
+  }
+  if (!total) return bracket?.champion ? "100% sesi" : "0% sesi";
+  return `${Math.round((done / total) * 100)}% sesi`;
+}
+
+function chartWidth(value, max) {
+  const safeMax = Math.max(1, max);
+  return Math.max(4, Math.round((Number(value) / safeMax) * 100));
+}
+
+function renderGameProgressChart(games) {
+  if (!games.length) {
+    return `<p class="hint">Belum ada permainan.</p>`;
+  }
+  return games
+    .map(
+      (game) => `
+    <div class="chart-row">
+      <div class="chart-label">
+        <strong>${escapeHtml(game.name)}</strong>
+        <small>${dashboardStatusLabel(game.status)}${
+          game.champion ? ` · ${escapeHtml(game.champion)}` : game.hasDraw ? ` · ${game.progress || 0}%` : ""
+        }</small>
+      </div>
+      <div class="chart-track" role="img" aria-label="${escapeHtml(game.name)} ${game.progress || 0}%">
+        <div class="chart-bar is-progress is-${escapeHtml(game.status)}" style="width:${game.progress || 0}%">
+          <span>${game.progress || 0}%</span>
+        </div>
+      </div>
+    </div>`,
+    )
+    .join("");
+}
+
+function renderParticipantChart(people) {
+  if (!people.length) {
+    return `<p class="hint">Belum ada peserta yang ikut permainan.</p>`;
+  }
+  const maxGames = Math.max(1, ...people.map((person) => person.games || 0));
+  const maxWins = Math.max(1, ...people.map((person) => person.wins || 0));
+  return people
+    .map(
+      (person, index) => `
+    <div class="chart-row">
+      <div class="chart-label">
+        <span class="chart-rank">${index + 1}</span>
+        <div>
+          <strong>${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</strong>
+          <small>${person.games || 0} permainan · ${person.wins || 0} menang</small>
+        </div>
+      </div>
+      <div class="chart-track chart-track-dual">
+        <div class="chart-bar is-games" style="width:${chartWidth(person.games, maxGames)}%" title="${person.games || 0} permainan">
+          <span>${person.games || 0}</span>
+        </div>
+        <div class="chart-bar is-wins" style="width:${chartWidth(person.wins, maxWins)}%" title="${person.wins || 0} menang">
+          <span>${person.wins || 0}</span>
+        </div>
+      </div>
+    </div>`,
+    )
+    .join("");
+}
+
+function renderDrawSummary(game) {
+  renderDrawInfo(game, drawForGame(selectedGameId));
 }
 
 function updateDrawPanel() {
@@ -273,41 +367,8 @@ async function loadDashboard() {
 
 function renderDashboard(data) {
   const gameRows = data?.games || [];
-  dashboardGames.innerHTML = gameRows.length
-    ? gameRows
-        .map(
-          (game) => `
-        <article class="dash-game">
-          <div class="dash-game-head">
-            <strong>${escapeHtml(game.name)}</strong>
-            <span class="dash-status is-${escapeHtml(game.status)}">${dashboardStatusLabel(game.status)}</span>
-          </div>
-          <div class="dash-progress" aria-hidden="true"><span style="width:${game.progress || 0}%"></span></div>
-          <p class="dash-meta">${
-            game.hasDraw
-              ? `${game.progress || 0}% sesi${game.champion ? ` · Juara: ${escapeHtml(game.champion)}` : ""}`
-              : "Menunggu pengacakan"
-          }</p>
-        </article>`,
-        )
-        .join("")
-    : `<p class="hint">Belum ada permainan.</p>`;
-
-  const top = data?.topParticipants || [];
-  dashboardTop.innerHTML = top.length
-    ? top
-        .map(
-          (person, index) => `
-        <div class="dash-person">
-          <span class="dash-rank">${index + 1}</span>
-          <div>
-            <strong>${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</strong>
-          </div>
-          <span class="dash-count">${person.count} permainan</span>
-        </div>`,
-        )
-        .join("")
-    : `<p class="hint">Belum ada peserta yang ikut permainan.</p>`;
+  dashboardGames.innerHTML = renderGameProgressChart(gameRows);
+  dashboardTop.innerHTML = renderParticipantChart(data?.topParticipants || []);
 }
 
 async function loadDrawForSelectedGame() {
@@ -646,16 +707,6 @@ async function readFile(file) {
 function renderResult(result) {
   lastResult = result;
   renderTourneyBoard(result);
-
-  if (result.leftover.length) {
-    leftoverEl.classList.remove("hidden");
-    leftoverEl.innerHTML = `<h3>Cadangan (${result.leftover.length})</h3><p>${result.leftover
-      .map((person) => escapeHtml(formatParticipantLabel(person.nama, person.cabang)))
-      .join(", ")}</p>`;
-  } else {
-    leftoverEl.classList.add("hidden");
-    leftoverEl.innerHTML = "";
-  }
 
   if (result.gameId) {
     selectedGameId = games.some((game) => game.id === result.gameId) ? result.gameId : selectedGameId;
@@ -1070,7 +1121,7 @@ async function enterApp(user, defaultView) {
   show(appShell);
   applyAccessUi();
   await loadFromCloud();
-  showView(defaultView || firstAllowedView(currentUser) || "peserta");
+  showView(defaultView || firstAllowedView(currentUser) || "dashboard");
 }
 
 async function boot() {

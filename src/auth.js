@@ -62,6 +62,9 @@ export function viewForRight(right) {
 }
 
 export function firstAllowedView(user) {
+  if (hasRight(user, "pembagian") || hasRight(user, "hasil") || hasRight(user, "permainan")) {
+    return "dashboard";
+  }
   const right = RIGHTS.map((item) => item.id).find((id) => hasRight(user, id));
   return right ? viewForRight(right) : "";
 }

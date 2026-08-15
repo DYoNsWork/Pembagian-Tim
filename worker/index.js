@@ -1,6 +1,6 @@
 import { divideTeams, normalizeGenderMode } from "../src/teams.js";
 import { chunk, extraDrawIds, groupDrawMembers, normalizeParticipant, personFromRow } from "../src/draws.js";
-import { gameProgressRows, participationCounts } from "../src/dashboard.js";
+import { gameProgressRows, participantLeaderboard } from "../src/dashboard.js";
 import { findDuplicateParticipantKeys, formatParticipantLabel, participantKey } from "../src/csv.js";
 import {
   gameFromRow,
@@ -614,11 +614,16 @@ async function getDashboard(env) {
     (drawRows || []).map((row) => [row.game_id, { id: row.id, bracket: row.bracket }]),
   );
   const { results: memberRows } = await env.DB.prepare(
-    "SELECT team_number, nama, cabang FROM draw_members",
+    "SELECT draw_id, team_number, nama, cabang FROM draw_members WHERE team_number > 0",
   ).all();
+  const drawSnapshots = (drawRows || []).map((row) => ({
+    drawId: row.id,
+    bracket: row.bracket,
+    members: (memberRows || []).filter((member) => Number(member.draw_id) === Number(row.id)),
+  }));
   return {
     games: gameProgressRows(games, drawsByGame),
-    topParticipants: participationCounts(memberRows).slice(0, 12),
+    topParticipants: participantLeaderboard(memberRows, drawSnapshots, 10),
   };
 }
 

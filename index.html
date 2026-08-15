@@ -64,13 +64,13 @@
           </div>
         </div>
         <nav class="side-nav" id="side-nav" aria-label="Menu utama">
-          <button type="button" class="nav-item is-active" data-view="peserta">
+          <button type="button" class="nav-item is-active" data-view="dashboard">
             <span class="nav-index">01</span>
-            <span>Peserta</span>
-          </button>
-          <button type="button" class="nav-item" data-view="dashboard">
-            <span class="nav-index">02</span>
             <span>Dashboard</span>
+          </button>
+          <button type="button" class="nav-item" data-view="peserta">
+            <span class="nav-index">02</span>
+            <span>Peserta</span>
           </button>
           <button type="button" class="nav-item" data-view="permainan">
             <span class="nav-index">03</span>
@@ -97,8 +97,8 @@
       <div class="page">
         <header class="topbar">
           <div>
-            <p class="eyebrow" id="view-eyebrow">Peserta</p>
-            <h1 id="view-title">Data peserta</h1>
+            <p class="eyebrow" id="view-eyebrow">Dashboard</p>
+            <h1 id="view-title">Beranda</h1>
           </div>
           <div class="topbar-user">
             <span class="user-chip" id="topbar-user">—</span>
@@ -107,7 +107,7 @@
         </header>
 
         <main>
-          <section class="view" id="view-peserta">
+          <section class="view hidden" id="view-peserta">
             <section class="panel" id="upload-panel">
               <div class="panel-head">
                 <h2>Unggah data peserta</h2>
@@ -189,19 +189,23 @@
             </section>
           </section>
 
-          <section class="view hidden" id="view-dashboard">
+          <section class="view" id="view-dashboard">
             <section class="panel">
               <div class="panel-head">
                 <h2>Progress permainan</h2>
               </div>
-              <div id="dashboard-games" class="dashboard-list"></div>
+              <div id="dashboard-games" class="chart-panel" aria-label="Grafik progress permainan"></div>
             </section>
             <section class="panel">
               <div class="panel-head">
-                <h2>Peserta paling aktif</h2>
+                <h2>Peserta terbaik</h2>
               </div>
-              <p class="hint">Berdasarkan jumlah permainan yang diikuti setelah pengacakan.</p>
-              <div id="dashboard-top" class="dashboard-top"></div>
+              <p class="hint">Partisipasi (permainan diikuti) dan kemenangan sesi — tanpa pemain cadangan.</p>
+              <div class="chart-legend">
+                <span><i class="legend-dot is-games"></i> Permainan</span>
+                <span><i class="legend-dot is-wins"></i> Menang</span>
+              </div>
+              <div id="dashboard-top" class="chart-panel" aria-label="Grafik peserta terbaik"></div>
             </section>
           </section>
 
@@ -315,7 +319,7 @@
                       <option value="">Pilih permainan</option>
                     </select>
                   </label>
-                  <div id="draw-summary" class="draw-summary hidden"></div>
+                  <div id="draw-info" class="draw-info hidden"></div>
                 </div>
                 <p class="hint" id="draw-pool-hint"></p>
                 <p class="hint hidden" id="draw-locked-hint">Hasil acak sudah dibuat. Hanya admin yang bisa mengacak ulang.</p>
@@ -328,7 +332,6 @@
             </section>
             <section class="panel hidden" id="result-panel">
               <div id="tourney-board" class="tourney-board"></div>
-              <div class="leftover hidden" id="leftover"></div>
             </section>
             <p class="empty-games" id="result-empty">Belum ada hasil. Bagi grup di atas untuk melihat daftar tim dan bagan gugur.</p>
           </section>
@@ -388,13 +391,13 @@
         </footer>
       </div>
       <nav class="bottom-nav" id="bottom-nav" aria-label="Menu bawah">
-        <button type="button" class="bottom-nav-item is-active" data-view="peserta">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5Z"/></svg>
-          <span>Peserta</span>
-        </button>
-        <button type="button" class="bottom-nav-item" data-view="dashboard">
+        <button type="button" class="bottom-nav-item is-active" data-view="dashboard">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 4h6v7H5Zm8 0h6v4h-6Zm0 6h6v10h-6ZM5 13h6v7H5Z"/></svg>
           <span>Board</span>
+        </button>
+        <button type="button" class="bottom-nav-item" data-view="peserta">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5Z"/></svg>
+          <span>Peserta</span>
         </button>
         <button type="button" class="bottom-nav-item" data-view="permainan">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 9 8H3l5 4-2 8 6-4 6 4-2-8 5-4h-6Z"/></svg>
