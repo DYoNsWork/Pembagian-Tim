@@ -665,7 +665,7 @@ function renderResult(result) {
   hide(resultEmpty);
 }
 
-function gamePayload() {
+function renderCompactSlot(slot, match) {
   const winner = match.winnerNumber === slot.number;
   if (can("hasil") && !slot.pending) {
     return `<button type="button" class="session-slot team-pick${winner ? " is-winner" : ""}" data-match-id="${escapeHtml(match.id)}" data-winner="${slot.number}">${escapeHtml(slot.name)}</button>`;
