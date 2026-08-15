@@ -747,6 +747,153 @@ button.team-pick:hover {
   border-radius: 8px;
 }
 
+.draw-game-bar {
+  display: grid;
+  gap: 10px;
+}
+
+.draw-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-2);
+}
+
+.summary-chip {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.summary-chip.is-warn {
+  color: var(--danger);
+  border-color: rgba(232, 106, 98, 0.35);
+}
+
+.panel-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+
+.sort-label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.sort-label select {
+  min-width: 120px;
+  height: 32px;
+  font-size: 0.82rem;
+}
+
+.dashboard-list,
+.dashboard-top {
+  display: grid;
+  gap: 10px;
+}
+
+.dash-game {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-2);
+}
+
+.dash-game-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dash-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
+.dash-status.is-selesai {
+  color: var(--green);
+  background: rgba(47, 182, 124, 0.12);
+}
+
+.dash-status.is-berjalan {
+  color: var(--gold);
+  background: rgba(212, 168, 75, 0.12);
+}
+
+.dash-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.dash-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--green-dark), var(--green));
+}
+
+.dash-meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.dash-person {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-2);
+}
+
+.dash-rank {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(212, 168, 75, 0.15);
+  color: var(--gold);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.dash-person small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.dash-count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--green);
+}
+
 .game-fieldset {
   border: 0;
   margin: 0 0 18px;

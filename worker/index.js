@@ -1,5 +1,6 @@
 import { divideTeams, normalizeGenderMode } from "../src/teams.js";
 import { chunk, extraDrawIds, groupDrawMembers, normalizeParticipant, personFromRow } from "../src/draws.js";
+import { gameProgressRows, participationCounts } from "../src/dashboard.js";
 import {
   gameFromRow,
   getGame,
@@ -155,6 +156,11 @@ async function handleApi(request, env, url) {
     return json(await listDraws(env));
   }
 
+  if (path === "/api/dashboard" && request.method === "GET") {
+    requireAnyRight(user, ["pembagian", "hasil", "permainan"]);
+    return json(await getDashboard(env));
+  }
+
   if (path === "/api/draws" && request.method === "POST") {
     requireRight(user, "pembagian");
     const body = await readJson(request);
@@ -181,7 +187,7 @@ async function handleApi(request, env, url) {
 async function listParticipants(env) {
   const [{ results }, filenameRow] = await Promise.all([
     env.DB.prepare(
-      "SELECT id, nama, jenis_kelamin, cabang, nomor, excluded FROM participants ORDER BY id ASC",
+      "SELECT id, nama, jenis_kelamin, cabang, excluded FROM participants ORDER BY id ASC",
     ).all(),
     env.DB.prepare("SELECT value FROM meta WHERE key = ?").bind("source_filename").first(),
   ]);
@@ -224,12 +230,12 @@ async function saveParticipants(env, body) {
   ]);
 
   const insert = env.DB.prepare(
-    "INSERT INTO participants (nama, jenis_kelamin, cabang, nomor, excluded) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO participants (nama, jenis_kelamin, cabang, excluded) VALUES (?, ?, ?, ?)",
   );
   for (const group of chunk(participants, INSERT_CHUNK)) {
     await env.DB.batch(
       group.map((person) =>
-        insert.bind(person.nama, person.jenisKelamin, person.cabang, person.nomor, person.excluded ? 1 : 0),
+        insert.bind(person.nama, person.jenisKelamin, person.cabang, person.excluded ? 1 : 0),
       ),
     );
   }
@@ -245,9 +251,9 @@ async function createParticipant(env, body) {
   }
   const parsed = normalizeParticipant(body);
   await env.DB.prepare(
-    "INSERT INTO participants (nama, jenis_kelamin, cabang, nomor, excluded) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO participants (nama, jenis_kelamin, cabang, excluded) VALUES (?, ?, ?, ?)",
   )
-    .bind(parsed.nama, parsed.jenisKelamin, parsed.cabang, parsed.nomor, parsed.excluded ? 1 : 0)
+    .bind(parsed.nama, parsed.jenisKelamin, parsed.cabang, parsed.excluded ? 1 : 0)
     .run();
   return listParticipants(env);
 }
@@ -259,9 +265,9 @@ async function updateParticipant(env, id, body) {
   }
   const parsed = normalizeParticipant(body);
   await env.DB.prepare(
-    "UPDATE participants SET nama = ?, jenis_kelamin = ?, cabang = ?, nomor = ?, excluded = ? WHERE id = ?",
+    "UPDATE participants SET nama = ?, jenis_kelamin = ?, cabang = ?, excluded = ? WHERE id = ?",
   )
-    .bind(parsed.nama, parsed.jenisKelamin, parsed.cabang, parsed.nomor, parsed.excluded ? 1 : 0, id)
+    .bind(parsed.nama, parsed.jenisKelamin, parsed.cabang, parsed.excluded ? 1 : 0, id)
     .run();
   return listParticipants(env);
 }
@@ -297,7 +303,7 @@ async function listGames(env) {
   const { results } = await env.DB.prepare(
     "SELECT id, name, members, team_count, groups_per_session, pic1_id, pic2_id, gender_mode, description, label_prefix, is_builtin, sort_order FROM games ORDER BY sort_order ASC, name ASC",
   ).all();
-  const people = await env.DB.prepare("SELECT id, nama, jenis_kelamin, cabang, nomor, excluded FROM participants").all();
+  const people = await env.DB.prepare("SELECT id, nama, jenis_kelamin, cabang, excluded FROM participants").all();
   const byId = new Map((people.results || []).map((row) => [Number(row.id), personFromRow(row)]));
   return (results || []).map((row) => withPicDetails(gameFromRow(row), byId));
 }
@@ -499,8 +505,6 @@ async function createDraw(env, body, user) {
     pic2Name: game.pic2Name,
     pic1Cabang: game.pic1Cabang,
     pic2Cabang: game.pic2Cabang,
-    pic1Nomor: game.pic1Nomor,
-    pic2Nomor: game.pic2Nomor,
     bracket,
     replaced: Boolean(existing),
   };
@@ -542,8 +546,6 @@ async function getDraw(env, id) {
     pic2Name: game?.pic2Name || "",
     pic1Cabang: game?.pic1Cabang || "",
     pic2Cabang: game?.pic2Cabang || "",
-    pic1Nomor: game?.pic1Nomor || "",
-    pic2Nomor: game?.pic2Nomor || "",
     bracket,
     needed: draw.team_count * draw.members_per_team,
     ...grouped,
@@ -568,6 +570,23 @@ async function updateDrawBracket(env, id, body) {
     .bind(JSON.stringify(bracket), id)
     .run();
   return { ...draw, bracket };
+}
+
+async function getDashboard(env) {
+  const games = await listGames(env);
+  const { results: drawRows } = await env.DB.prepare(
+    "SELECT id, game_id, game_name, bracket FROM draws",
+  ).all();
+  const drawsByGame = new Map(
+    (drawRows || []).map((row) => [row.game_id, { id: row.id, bracket: row.bracket }]),
+  );
+  const { results: memberRows } = await env.DB.prepare(
+    "SELECT team_number, nama, cabang FROM draw_members",
+  ).all();
+  return {
+    games: gameProgressRows(games, drawsByGame),
+    topParticipants: participationCounts(memberRows).slice(0, 12),
+  };
 }
 
 async function deleteDraw(env, id) {

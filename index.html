@@ -68,16 +68,20 @@
             <span class="nav-index">01</span>
             <span>Peserta</span>
           </button>
-          <button type="button" class="nav-item" data-view="permainan">
+          <button type="button" class="nav-item" data-view="dashboard">
             <span class="nav-index">02</span>
+            <span>Dashboard</span>
+          </button>
+          <button type="button" class="nav-item" data-view="permainan">
+            <span class="nav-index">03</span>
             <span>Permainan</span>
           </button>
           <button type="button" class="nav-item" data-view="pembagian">
-            <span class="nav-index">03</span>
+            <span class="nav-index">04</span>
             <span>Pembagian</span>
           </button>
           <button type="button" class="nav-item hidden" data-view="pengguna">
-            <span class="nav-index">04</span>
+            <span class="nav-index">05</span>
             <span>Pengguna</span>
           </button>
         </nav>
@@ -115,7 +119,7 @@
                 <span>
                   <strong>Seret file ke sini</strong> atau klik untuk memilih.
                   Tanpa header. Baris pertama juga data:
-                  <code>nama, jenis kelamin, nama cabang, nomor</code>
+                  <code>nama, jenis kelamin, nama cabang</code>
                 </span>
               </label>
               <p class="hint" id="file-status">Belum ada file yang diunggah. Data akan disimpan ke Cloudflare D1.</p>
@@ -124,7 +128,18 @@
             <section class="panel" id="data-panel">
               <div class="panel-head">
                 <h2>Daftar peserta</h2>
-                <button type="button" class="secondary" id="add-participant">Tambah peserta</button>
+                <div class="panel-tools">
+                  <label class="sort-label">
+                    Urutkan
+                    <select id="participant-sort">
+                      <option value="nama-asc">Nama A–Z</option>
+                      <option value="nama-desc">Nama Z–A</option>
+                      <option value="cabang">Cabang</option>
+                      <option value="status">Status</option>
+                    </select>
+                  </label>
+                  <button type="button" class="secondary" id="add-participant">Tambah</button>
+                </div>
               </div>
               <p class="muted" id="file-name"></p>
               <div class="stats" id="stats"></div>
@@ -145,10 +160,6 @@
                   Nama cabang
                   <input id="participant-cabang" type="text" maxlength="80" required />
                 </label>
-                <label>
-                  Nomor peserta
-                  <input id="participant-nomor" type="text" maxlength="40" placeholder="Opsional" />
-                </label>
                 <label class="check-row">
                   <input id="participant-excluded" type="checkbox" />
                   Tidak ikut permainan / undian
@@ -166,7 +177,6 @@
                     <tr>
                       <th>#</th>
                       <th>Nama</th>
-                      <th>Nomor</th>
                       <th>Jenis kelamin</th>
                       <th>Nama cabang</th>
                       <th>Status</th>
@@ -176,6 +186,22 @@
                   <tbody id="participant-rows"></tbody>
                 </table>
               </div>
+            </section>
+          </section>
+
+          <section class="view hidden" id="view-dashboard">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Progress permainan</h2>
+              </div>
+              <div id="dashboard-games" class="dashboard-list"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Peserta paling aktif</h2>
+              </div>
+              <p class="hint">Berdasarkan jumlah permainan yang diikuti setelah pengacakan.</p>
+              <div id="dashboard-top" class="dashboard-top"></div>
             </section>
           </section>
 
@@ -282,14 +308,15 @@
                 Unggah peserta dan tambah permainan dulu, lalu kembali ke menu Pembagian.
               </p>
               <form id="config-form" class="draw-compact hidden">
-                <label class="game-select-wide">
-                  Permainan
-                  <select id="draw-game" required>
-                    <option value="">Pilih permainan</option>
-                  </select>
-                </label>
-                <div id="draw-params" class="param-grid hidden"></div>
-                <div class="pic-box hidden" id="draw-pic-box"></div>
+                <div class="draw-game-bar">
+                  <label class="game-select-wide">
+                    Permainan
+                    <select id="draw-game" required>
+                      <option value="">Pilih permainan</option>
+                    </select>
+                  </label>
+                  <div id="draw-summary" class="draw-summary hidden"></div>
+                </div>
                 <p class="hint" id="draw-pool-hint"></p>
                 <p class="hint hidden" id="draw-locked-hint">Hasil acak sudah dibuat. Hanya admin yang bisa mengacak ulang.</p>
                 <div class="draw-actions">
@@ -300,12 +327,6 @@
               </form>
             </section>
             <section class="panel hidden" id="result-panel">
-              <div class="panel-head">
-                <h2 id="result-title">Hasil pembagian</h2>
-                <select id="draw-history" class="hidden" aria-label="Hasil per permainan"></select>
-              </div>
-              <div class="pic-box hidden" id="result-pic-box"></div>
-              <p class="result-meta" id="result-meta"></p>
               <div id="tourney-board" class="tourney-board"></div>
               <div class="leftover hidden" id="leftover"></div>
             </section>
@@ -370,6 +391,10 @@
         <button type="button" class="bottom-nav-item is-active" data-view="peserta">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5Z"/></svg>
           <span>Peserta</span>
+        </button>
+        <button type="button" class="bottom-nav-item" data-view="dashboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 4h6v7H5Zm8 0h6v4h-6Zm0 6h6v10h-6ZM5 13h6v7H5Z"/></svg>
+          <span>Board</span>
         </button>
         <button type="button" class="bottom-nav-item" data-view="permainan">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 9 8H3l5 4-2 8 6-4 6 4-2-8 5-4h-6Z"/></svg>

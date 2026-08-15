@@ -83,9 +83,9 @@ describe("normalizeGame", () => {
 });
 
 describe("formatPicLine", () => {
-  it("menampilkan nama, nomor, dan cabang PIC", () => {
-    expect(formatPicLine("Andi", "Jakarta", "01")).toBe("Andi (01) · Jakarta");
-    expect(formatPicLine("Siti", "Bandung", "")).toBe("Siti · Bandung");
-    expect(formatPicLine("", "Jakarta", "01")).toBe("");
+  it("menampilkan nama dan cabang PIC", () => {
+    expect(formatPicLine("Andi", "Jakarta")).toBe("Andi · Jakarta");
+    expect(formatPicLine("Siti", "Bandung")).toBe("Siti · Bandung");
+    expect(formatPicLine("", "Jakarta")).toBe("");
   });
 });

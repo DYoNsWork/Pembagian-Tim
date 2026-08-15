@@ -1,4 +1,4 @@
-import { listCabangs, parseParticipantsCsv, summarizeParticipants } from "./csv.js";
+import { listCabangs, parseParticipantsCsv, sortParticipants, summarizeParticipants } from "./csv.js";
 import { eligibleParticipants, genderModeLabel, normalizeGenderMode } from "./teams.js";
 import { formatPicLine, getGame } from "./games.js";
 import { api } from "./api.js";
@@ -13,6 +13,7 @@ import {
 
 const VIEWS = {
   peserta: { eyebrow: "Peserta", title: "Data peserta" },
+  dashboard: { eyebrow: "Dashboard", title: "Progress permainan" },
   permainan: { eyebrow: "Permainan", title: "Jenis permainan" },
   pembagian: { eyebrow: "Pembagian", title: "Bagi grup & hasil" },
   pengguna: { eyebrow: "Pengguna", title: "Hak akses" },
@@ -28,7 +29,8 @@ const resultEmpty = document.querySelector("#result-empty");
 const drawEmpty = document.querySelector("#draw-empty");
 const statsEl = document.querySelector("#stats");
 const rowsEl = document.querySelector("#participant-rows");
-const drawParams = document.querySelector("#draw-params");
+const participantSortSelect = document.querySelector("#participant-sort");
+const drawSummary = document.querySelector("#draw-summary");
 const drawPoolHint = document.querySelector("#draw-pool-hint");
 const drawLockedHint = document.querySelector("#draw-locked-hint");
 const drawGameSelect = document.querySelector("#draw-game");
@@ -47,8 +49,6 @@ const gamePic1Cabang = document.querySelector("#game-pic-1-cabang");
 const gamePic2Cabang = document.querySelector("#game-pic-2-cabang");
 const gamePic1Input = document.querySelector("#game-pic-1");
 const gamePic2Input = document.querySelector("#game-pic-2");
-const drawPicBox = document.querySelector("#draw-pic-box");
-const resultPicBox = document.querySelector("#result-pic-box");
 const gameDescriptionInput = document.querySelector("#game-description");
 const participantEditor = document.querySelector("#participant-editor");
 const participantCards = document.querySelector("#participant-cards");
@@ -57,11 +57,10 @@ const configForm = document.querySelector("#config-form");
 const configError = document.querySelector("#config-error");
 const tourneyBoard = document.querySelector("#tourney-board");
 const leftoverEl = document.querySelector("#leftover");
-const resultMeta = document.querySelector("#result-meta");
-const resultTitle = document.querySelector("#result-title");
 const cloudStatus = document.querySelector("#cloud-status");
-const drawHistory = document.querySelector("#draw-history");
 const clearBtn = document.querySelector("#clear-cloud");
+const dashboardGames = document.querySelector("#dashboard-games");
+const dashboardTop = document.querySelector("#dashboard-top");
 const sidebar = document.querySelector("#sidebar");
 const navBackdrop = document.querySelector("#nav-backdrop");
 const viewEyebrow = document.querySelector("#view-eyebrow");
@@ -83,6 +82,7 @@ let currentView = "peserta";
 let draws = [];
 let currentUser = null;
 let users = [];
+let participantSort = "nama-asc";
 
 function show(el) {
   el.classList.remove("hidden");
@@ -133,6 +133,7 @@ function can(right) {
 }
 
 function canOpenView(name) {
+  if (name === "dashboard") return can("pembagian") || can("hasil") || can("permainan");
   const view = viewForRight(name);
   if (view === "pembagian") return can("pembagian") || can("hasil");
   return can(view);
@@ -159,7 +160,11 @@ function showView(name) {
   viewTitle.textContent =
     view === "pembagian" && lastResult?.gameName ? lastResult.gameName : VIEWS[view].title;
   closeSidebar();
-  if (view === "pembagian") updateDrawPanel();
+  if (view === "pembagian") {
+    updateDrawPanel();
+    loadDrawForSelectedGame();
+  }
+  if (view === "dashboard") loadDashboard();
   if (view === "permainan" && !games.length && can("permainan")) openGameEditor();
   if (view === "pengguna") loadUsers();
 }
@@ -173,7 +178,7 @@ function applyAccessUi() {
   document.querySelectorAll(".user-chip").forEach((el) => {
     el.textContent = role ? `${name} · ${role}` : name;
   });
-  document.querySelector("#clear-cloud")?.classList.toggle("hidden", !(can("peserta") && participants.length));
+  document.querySelector("#clear-cloud")?.classList.toggle("hidden", !(isAdmin() && participants.length));
   document.querySelector("#add-game")?.classList.toggle("hidden", !can("permainan"));
   document.querySelector("#add-participant")?.classList.toggle("hidden", !can("peserta"));
   document.body.classList.toggle("can-edit-peserta", can("peserta"));
@@ -197,32 +202,35 @@ function setGames(list, { keepSelection = true } = {}) {
   updateDrawPanel();
 }
 
-function renderDrawParams(game) {
+function renderDrawSummary(game) {
   if (!game) {
-    hide(drawParams);
-    drawParams.innerHTML = "";
+    hide(drawSummary);
+    drawSummary.innerHTML = "";
     return;
   }
   const needed = game.teamCount * game.members;
   const pool = poolForGame(game);
   const enough = pool.length >= needed;
-  show(drawParams);
-  drawParams.innerHTML = [
-    ["Komposisi", genderModeLabel(game.genderMode)],
-    ["Grup", `${game.teamCount} tim`],
-    ["Anggota", `${game.members} / tim`],
-    ["Sesi", `${game.groupsPerSession} tim / sesi`],
-    ["Kebutuhan", `${needed} peserta`],
-    ["Tersedia", `${pool.length} peserta`],
-  ]
+  show(drawSummary);
+  const chips = [
+    genderModeLabel(game.genderMode),
+    `${game.teamCount} grup × ${game.members} org`,
+    `${game.groupsPerSession} tim / sesi`,
+    `${pool.length}/${needed} peserta`,
+  ];
+  const pic1 = formatPicLine(game.pic1Name, game.pic1Cabang);
+  const pic2 = formatPicLine(game.pic2Name, game.pic2Cabang);
+  if (pic1) chips.push(`PIC 1: ${pic1}`);
+  if (pic2) chips.push(`PIC 2: ${pic2}`);
+  drawSummary.innerHTML = chips
     .map(
-      ([label, value]) =>
-        `<div class="param-item${label === "Tersedia" && !enough ? " is-warn" : ""}"><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`,
+      (text, index) =>
+        `<span class="summary-chip${index === 3 && !enough ? " is-warn" : ""}">${escapeHtml(text)}</span>`,
     )
     .join("");
   drawPoolHint.textContent = enough
-    ? "Parameter diambil dari definisi permainan. Klik Acak grup untuk mengundi."
-    : `Peserta tidak cukup. Butuh ${needed}, tersedia ${pool.length} (setelah PIC & exclude).`;
+    ? "Parameter dari definisi permainan. Klik Acak grup jika belum diundi."
+    : `Peserta tidak cukup (${pool.length}/${needed} setelah PIC & exclude).`;
   drawPoolHint.classList.toggle("is-warn", !enough);
 }
 
@@ -230,8 +238,7 @@ function updateDrawPanel() {
   renderGameSelect();
   const game = selectedGame();
   const existing = drawForGame(selectedGameId);
-  renderDrawParams(game);
-  renderPicBox(drawPicBox, game);
+  renderDrawSummary(game);
   const ready = Boolean(participants.length && games.length && game);
   const canDraw = can("pembagian");
   configForm.classList.toggle("hidden", !canDraw || !ready);
@@ -246,6 +253,79 @@ function updateDrawPanel() {
   drawLockedHint.classList.toggle("hidden", !locked);
   reshuffleBtn.classList.toggle("hidden", !locked || !isAdmin());
   drawSubmit.disabled = !game || poolForGame(game).length < (game?.teamCount || 0) * (game?.members || 0);
+}
+
+function dashboardStatusLabel(status) {
+  if (status === "selesai") return "Selesai";
+  if (status === "berjalan") return "Berjalan";
+  return "Belum diacak";
+}
+
+async function loadDashboard() {
+  if (!canOpenView("dashboard")) return;
+  try {
+    renderDashboard(await api("/api/dashboard"));
+  } catch (error) {
+    dashboardGames.innerHTML = `<p class="hint">${escapeHtml(error.message)}</p>`;
+    dashboardTop.innerHTML = "";
+  }
+}
+
+function renderDashboard(data) {
+  const gameRows = data?.games || [];
+  dashboardGames.innerHTML = gameRows.length
+    ? gameRows
+        .map(
+          (game) => `
+        <article class="dash-game">
+          <div class="dash-game-head">
+            <strong>${escapeHtml(game.name)}</strong>
+            <span class="dash-status is-${escapeHtml(game.status)}">${dashboardStatusLabel(game.status)}</span>
+          </div>
+          <div class="dash-progress" aria-hidden="true"><span style="width:${game.progress || 0}%"></span></div>
+          <p class="dash-meta">${
+            game.hasDraw
+              ? `${game.progress || 0}% sesi${game.champion ? ` · Juara: ${escapeHtml(game.champion)}` : ""}`
+              : "Menunggu pengacakan"
+          }</p>
+        </article>`,
+        )
+        .join("")
+    : `<p class="hint">Belum ada permainan.</p>`;
+
+  const top = data?.topParticipants || [];
+  dashboardTop.innerHTML = top.length
+    ? top
+        .map(
+          (person, index) => `
+        <div class="dash-person">
+          <span class="dash-rank">${index + 1}</span>
+          <div>
+            <strong>${escapeHtml(person.nama)}</strong>
+            <small>${escapeHtml(person.cabang)}</small>
+          </div>
+          <span class="dash-count">${person.count} permainan</span>
+        </div>`,
+        )
+        .join("")
+    : `<p class="hint">Belum ada peserta yang ikut permainan.</p>`;
+}
+
+async function loadDrawForSelectedGame() {
+  const existing = drawForGame(selectedGameId);
+  if (!existing || !(can("pembagian") || can("hasil"))) {
+    lastResult = null;
+    hide(resultPanel);
+    show(resultEmpty);
+    return;
+  }
+  try {
+    renderResult(await api(`/api/draws/${existing.id}`));
+  } catch {
+    lastResult = null;
+    hide(resultPanel);
+    show(resultEmpty);
+  }
 }
 
 function renderGamePicker() {
@@ -265,8 +345,8 @@ function renderGamePicker() {
         <div class="game-card-body">
           <span class="game-card-name">${escapeHtml(game.name)}</span>
           <span class="game-card-size">${game.teamCount} grup · ${game.members} org · ${game.groupsPerSession} /sesi · ${escapeHtml(genderModeLabel(game.genderMode))}</span>
-          <span class="game-card-size">PIC 1: ${escapeHtml(formatPicLine(game.pic1Name, game.pic1Cabang, game.pic1Nomor) || "belum dipilih")}</span>
-          <span class="game-card-size">PIC 2: ${escapeHtml(formatPicLine(game.pic2Name, game.pic2Cabang, game.pic2Nomor) || "belum dipilih")}</span>
+          <span class="game-card-size">PIC 1: ${escapeHtml(formatPicLine(game.pic1Name, game.pic1Cabang) || "belum dipilih")}</span>
+          <span class="game-card-size">PIC 2: ${escapeHtml(formatPicLine(game.pic2Name, game.pic2Cabang) || "belum dipilih")}</span>
           <span class="game-card-desc">${escapeHtml(game.description || "Tidak ada penjelasan.")}</span>
         </div>
         <div class="game-card-actions">
@@ -295,6 +375,7 @@ function applyGame(gameId) {
     selectedGameId = "";
     renderGamePicker();
     updateDrawPanel();
+    loadDrawForSelectedGame();
     return;
   }
   const game = games.find((item) => item.id === gameId);
@@ -302,11 +383,13 @@ function applyGame(gameId) {
     selectedGameId = "";
     renderGamePicker();
     updateDrawPanel();
+    loadDrawForSelectedGame();
     return;
   }
   selectedGameId = game.id;
   renderGamePicker();
   updateDrawPanel();
+  loadDrawForSelectedGame();
 }
 
 function closeGameEditor() {
@@ -358,7 +441,7 @@ function fillPicPair(cabangSelect, personSelect, cabang, personId) {
     `<option value="">Pilih peserta</option>`,
     ...people.map(
       (person) =>
-        `<option value="${person.id}">${escapeHtml(person.nama)}${person.nomor ? ` (${escapeHtml(person.nomor)})` : ""}</option>`,
+        `<option value="${person.id}">${escapeHtml(person.nama)}</option>`,
     ),
   ].join("");
   personSelect.value =
@@ -373,27 +456,8 @@ function fillPicSelects(pic1Id, pic2Id) {
   fillPicPair(gamePic2Cabang, gamePic2Input, pic2?.cabang, pic2Id);
 }
 
-function renderPicBox(el, source) {
-  if (!el) return;
-  const items = [
-    { label: "PIC 1", text: formatPicLine(source?.pic1Name, source?.pic1Cabang, source?.pic1Nomor) },
-    { label: "PIC 2", text: formatPicLine(source?.pic2Name, source?.pic2Cabang, source?.pic2Nomor) },
-  ].filter((item) => item.text);
-  if (!items.length) {
-    el.innerHTML = "";
-    el.classList.add("hidden");
-    return;
-  }
-  el.classList.remove("hidden");
-  el.innerHTML = items
-    .map(
-      (item) =>
-        `<div class="pic-item"><span>${item.label}</span><strong>${escapeHtml(item.text)}</strong></div>`,
-    )
-    .join("");
-}
-
 function renderParticipants(list) {
+  const sorted = sortParticipants(list, participantSort);
   const summary = summarizeParticipants(list);
   statsEl.innerHTML = [
     ["Total peserta", summary.total],
@@ -407,13 +471,12 @@ function renderParticipants(list) {
     )
     .join("");
 
-  rowsEl.innerHTML = list
+  rowsEl.innerHTML = sorted
     .map(
       (person, index) => `
         <tr class="${person.excluded ? "is-excluded" : ""}">
           <td>${index + 1}</td>
           <td>${escapeHtml(person.nama)}</td>
-          <td>${escapeHtml(person.nomor || "—")}</td>
           <td>${genderBadge(person.jenisKelamin)}</td>
           <td>${escapeHtml(person.cabang)}</td>
           <td>${person.excluded ? "Tidak ikut" : "Ikut"}</td>
@@ -427,13 +490,13 @@ function renderParticipants(list) {
     )
     .join("");
 
-  participantCards.innerHTML = list
+  participantCards.innerHTML = sorted
     .map(
       (person) => `
         <article class="person-card ${person.excluded ? "is-excluded" : ""}">
           <div>
             <strong>${escapeHtml(person.nama)}</strong>
-            <span class="user-meta">${escapeHtml(person.nomor || "Tanpa nomor")} · ${genderBadge(person.jenisKelamin)} · ${escapeHtml(person.cabang)}</span>
+            <span class="user-meta">${genderBadge(person.jenisKelamin)} · ${escapeHtml(person.cabang)}</span>
             <span class="user-meta">${person.excluded ? "Tidak ikut permainan" : "Ikut undian"}</span>
           </div>
           <div class="game-card-actions">
@@ -495,7 +558,6 @@ function openParticipantEditor(person) {
     document.querySelector("#participant-gender").value =
       person.jenisKelamin === "Perempuan" ? "Perempuan" : "Laki-laki";
     document.querySelector("#participant-cabang").value = person.cabang === "-" ? "" : person.cabang;
-    document.querySelector("#participant-nomor").value = person.nomor || "";
     document.querySelector("#participant-excluded").checked = Boolean(person.excluded);
   } else {
     document.querySelector("#participant-edit-id").value = "";
@@ -517,7 +579,6 @@ function participantPayload() {
     nama: document.querySelector("#participant-name").value,
     jenisKelamin: document.querySelector("#participant-gender").value,
     cabang: document.querySelector("#participant-cabang").value,
-    nomor: document.querySelector("#participant-nomor").value,
     excluded: document.querySelector("#participant-excluded").checked,
   };
 }
@@ -582,18 +643,6 @@ async function readFile(file) {
 
 function renderResult(result) {
   lastResult = result;
-  const modeLabel = genderModeLabel(result.genderMode);
-  const pool = result.poolSize || result.used;
-  const gameTitle = result.gameName || "Grup permainan";
-  resultTitle.textContent = gameTitle;
-  resultMeta.innerHTML = [
-    `<span class="meta-chip">${escapeHtml(modeLabel)}</span>`,
-    `<span class="meta-chip">${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota</span>`,
-    result.groupsPerSession ? `<span class="meta-chip">${result.groupsPerSession} grup / sesi</span>` : "",
-    `<span class="meta-chip">${result.used} / ${pool} peserta</span>`,
-    result.createdAt ? `<span class="meta-chip muted-chip">${escapeHtml(formatTime(result.createdAt))}</span>` : "",
-  ].join("");
-  renderPicBox(resultPicBox, result);
   renderTourneyBoard(result);
 
   if (result.leftover.length) {
@@ -616,13 +665,7 @@ function renderResult(result) {
   hide(resultEmpty);
 }
 
-function formatTime(value) {
-  const date = new Date(`${value}Z`);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("id-ID");
-}
-
-function renderCompactSlot(slot, match) {
+function gamePayload() {
   const winner = match.winnerNumber === slot.number;
   if (can("hasil") && !slot.pending) {
     return `<button type="button" class="session-slot team-pick${winner ? " is-winner" : ""}" data-match-id="${escapeHtml(match.id)}" data-winner="${slot.number}">${escapeHtml(slot.name)}</button>`;
@@ -784,24 +827,13 @@ async function removeGame(id) {
 async function refreshDrawHistory(selectedId) {
   const data = await api("/api/draws");
   draws = data.draws || [];
-  if (!draws.length) {
-    hide(drawHistory);
-    drawHistory.innerHTML = "";
-    updateDrawPanel();
-    return;
-  }
-
-  drawHistory.innerHTML = `
-    <option value="">Pilih permainan</option>
-    ${draws
-      .map(
-        (draw) =>
-          `<option value="${draw.id}" ${String(draw.id) === String(selectedId) ? "selected" : ""}>${escapeHtml(draw.gameName || "Permainan")} · ${escapeHtml(genderModeLabel(draw.genderMode))} · ${draw.teamCount}×${draw.membersPerTeam}</option>`,
-      )
-      .join("")}
-  `;
-  show(drawHistory);
   updateDrawPanel();
+  if (selectedId) {
+    const draw = draws.find((item) => String(item.id) === String(selectedId));
+    if (draw?.gameId) selectedGameId = draw.gameId;
+    renderGameSelect();
+  }
+  loadDashboard();
 }
 
 async function runDraw({ replace = false } = {}) {
@@ -883,11 +915,15 @@ async function loadFromCloud() {
     if (can("pembagian") || can("hasil")) {
       const { draws: history } = await api("/api/draws");
       await refreshDrawHistory(history[0]?.id);
-      if (history[0]) {
-        const latest = await api(`/api/draws/${history[0].id}`);
-        renderResult(latest);
+      if (selectedGameId && drawForGame(selectedGameId)) {
+        await loadDrawForSelectedGame();
+      } else if (history[0]) {
+        selectedGameId = history[0].gameId || selectedGameId;
+        renderGameSelect();
+        await loadDrawForSelectedGame();
       }
     }
+    if (canOpenView("dashboard")) await loadDashboard();
     applyAccessUi();
   } catch (error) {
     if (error.status === 401) {
@@ -1112,6 +1148,11 @@ drawGameSelect.addEventListener("change", () => {
   applyGame(drawGameSelect.value);
 });
 
+participantSortSelect.addEventListener("change", () => {
+  participantSort = participantSortSelect.value;
+  renderParticipants(participants);
+});
+
 configForm.addEventListener("submit", (event) => {
   event.preventDefault();
   runDraw();
@@ -1137,6 +1178,12 @@ dataPanel.addEventListener("click", (event) => {
 tourneyBoard.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-match-id]");
   if (!(button instanceof HTMLButtonElement) || !lastResult?.id) return;
+  const teamName = button.textContent?.trim() || "tim ini";
+  const isWinner = button.classList.contains("is-winner");
+  const message = isWinner
+    ? `Batalkan pemenang "${teamName}"?`
+    : `Jadikan "${teamName}" pemenang sesi ini?`;
+  if (!confirm(message)) return;
   try {
     const updated = await api(`/api/draws/${lastResult.id}`, {
       method: "PUT",
@@ -1151,22 +1198,9 @@ tourneyBoard.addEventListener("click", async (event) => {
         ? `Juara: ${updated.bracket.champion.name}`
         : "Pemenang sesi disimpan",
     );
+    loadDashboard();
   } catch (error) {
     setCloudStatus(error.message, "warn");
-  }
-});
-
-drawHistory.addEventListener("change", async () => {
-  const id = drawHistory.value;
-  if (!id) return;
-  try {
-    const draw = await api(`/api/draws/${id}`);
-    renderResult(draw);
-    showView("pembagian");
-  } catch (error) {
-    configError.textContent = error.message;
-    show(configError);
-    showView("pembagian");
   }
 });
 
@@ -1179,10 +1213,11 @@ clearBtn.addEventListener("click", async () => {
     draws = [];
     hide(resultPanel);
     show(resultEmpty);
-    hide(drawHistory);
     showParticipantData([], "");
     fileStatus.textContent = "Data Cloudflare D1 sudah dikosongkan.";
     setCloudStatus("Peserta dan undian dihapus. Jenis permainan tetap ada.", "muted");
+    updateDrawPanel();
+    loadDashboard();
     showView("peserta");
   } catch (error) {
     setCloudStatus(error.message, "warn");

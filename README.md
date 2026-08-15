@@ -1,10 +1,10 @@
 # Pembagian Tim
 
-Aplikasi web untuk membagi peserta ke dalam **grup permainan** secara acak. Data diunggah dari file CSV **tanpa header** berisi **nama**, **jenis kelamin**, **nama cabang**, dan **nomor peserta**. Cabang hanya ditampilkan; pengacakan tidak mengelompokkan berdasarkan cabang. PIC permainan dan peserta yang di-exclude tidak masuk grup.
+Aplikasi web untuk membagi peserta ke dalam **grup permainan** secara acak. Data diunggah dari file CSV **tanpa header** berisi **nama**, **jenis kelamin**, dan **nama cabang**. Cabang hanya ditampilkan; pengacakan tidak mengelompokkan berdasarkan cabang. PIC permainan dan peserta yang di-exclude tidak masuk grup.
 
-Pilih atau **buat sendiri** jenis permainan. Katalog mulai **kosong**. Bagi grup dengan komposisi **campur** (acak murni dari semua peserta), **laki-laki saja**, atau **perempuan saja**. Di HP, menu ada di **bawah layar**.
+Pilih atau **buat sendiri** jenis permainan. Katalog mulai **kosong**. **Dashboard** menampilkan progress tiap permainan dan peserta yang paling sering ikut undian. Di HP, menu ada di **bawah layar**.
 
-Masuk dengan akun. Admin bisa **tambah pengguna** dan memberi hak akses per menu: Peserta, Permainan, Pembagian, atau Pengguna. Hak **hasil** tetap ada untuk penonton, tapi tampil di menu Pembagian.
+Masuk dengan akun. Admin bisa **tambah pengguna**, **hapus data cloud**, dan **acak ulang**. Hak akses per menu: Peserta, Permainan, Pembagian, atau Pengguna. Hak **hasil** tetap ada untuk penonton, dibuka di menu Pembagian.
 
 Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disimpan di **Cloudflare D1**.
 
@@ -21,9 +21,9 @@ Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disi
 
 2. Unggah CSV di aplikasi. Data langsung tersimpan di D1, jadi tetap ada setelah halaman di-refresh.
 
-3. Di menu **Permainan**, tambah jenis permainan: nama, penjelasan, jumlah grup, peserta per grup, **grup per sesi**, dan **2 PIC**. Untuk tiap PIC, pilih **cabang** dulu, lalu peserta dari cabang itu. PIC tidak masuk ke grup saat pengacakan. Nama, nomor, dan cabang PIC tampil di kartu permainan serta di halaman pembagian/hasil.
+3. Di menu **Permainan**, atur semua parameter: komposisi grup, jumlah grup, anggota per grup, grup per sesi, dan 2 PIC (cabang lalu peserta).
 
-4. Di menu **Pembagian**, pilih permainan, lihat PIC-nya, lalu pilih komposisi grup: **campur**, **laki-laki saja**, atau **perempuan saja**. Hasil undian (daftar tim + bagan gugur) tampil di halaman yang sama. Setiap jenis lomba hanya punya **satu hasil acak**; membagi lagi mengganti hasil sebelumnya. Grup diberi nama sederhana (`Tim 1`, `Tim 2`, …).
+4. Di menu **Pembagian**, pilih permainan lalu klik **Acak grup**. Parameter hanya ditampilkan (tidak bisa diubah di sini). Setiap permainan hanya boleh diacak sekali; **admin** saja yang bisa **Acak ulang**. Hasil tim per sesi dan bagan gugur tampil di halaman yang sama.
 
    Contoh: permainan “Gobak sodor” dengan 8 grup × 8 orang membutuhkan 64 peserta dari kumpulan yang dipilih. Jika lebih, sisanya masuk cadangan. Jika kurang, aplikasi menampilkan peringatan. Dengan 2 grup per sesi, bagan gugur membuat 4 pertandingan babak awal, lalu semifinal dan final.
 

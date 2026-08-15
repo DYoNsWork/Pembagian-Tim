@@ -28,7 +28,6 @@ describe("personFromRow", () => {
         nama: "Andi",
         jenis_kelamin: "Laki-laki",
         cabang: "Jakarta",
-        nomor: "07",
         excluded: 1,
       }),
     ).toEqual({
@@ -36,27 +35,24 @@ describe("personFromRow", () => {
       nama: "Andi",
       jenisKelamin: "Laki-laki",
       cabang: "Jakarta",
-      nomor: "07",
       excluded: true,
     });
   });
 });
 
 describe("normalizeParticipant", () => {
-  it("wajib nama dan menormalisasi gender serta nomor", () => {
+  it("wajib nama dan menormalisasi gender", () => {
     expect(
       normalizeParticipant({
         nama: "  Andi  ",
         jenisKelamin: "L",
         cabang: "Jakarta",
-        nomor: "07",
         excluded: true,
       }),
     ).toEqual({
       nama: "Andi",
       jenisKelamin: "Laki-laki",
       cabang: "Jakarta",
-      nomor: "07",
       excluded: true,
     });
     expect(() => normalizeParticipant({ nama: " " })).toThrow(/nama/i);

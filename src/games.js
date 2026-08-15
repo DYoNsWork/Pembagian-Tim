@@ -109,22 +109,17 @@ export function gameFromRow(row) {
     pic2Name: row.pic2_name || row.pic2Name || "",
     pic1Cabang: row.pic1_cabang || row.pic1Cabang || "",
     pic2Cabang: row.pic2_cabang || row.pic2Cabang || "",
-    pic1Nomor: row.pic1_nomor || row.pic1Nomor || "",
-    pic2Nomor: row.pic2_nomor || row.pic2Nomor || "",
     genderMode: normalizeGenderMode(row.gender_mode ?? row.genderMode ?? "campur"),
     labelPrefix: row.label_prefix || row.labelPrefix || row.name || "Tim",
     sortOrder: Number(row.sort_order) || 0,
   };
 }
 
-export function formatPicLine(name, cabang, nomor) {
+export function formatPicLine(name, cabang) {
   const who = String(name || "").trim();
   if (!who) return "";
-  const num = String(nomor || "").trim();
   const branch = String(cabang || "").trim();
-  return [num ? `${who} (${num})` : who, branch && branch !== "-" ? branch : ""]
-    .filter(Boolean)
-    .join(" · ");
+  return branch && branch !== "-" ? `${who} · ${branch}` : who;
 }
 
 export function withPicDetails(game, peopleById = new Map()) {
@@ -134,9 +129,7 @@ export function withPicDetails(game, peopleById = new Map()) {
     ...game,
     pic1Name: pic1?.nama || game?.pic1Name || "",
     pic1Cabang: pic1?.cabang || game?.pic1Cabang || "",
-    pic1Nomor: pic1?.nomor || game?.pic1Nomor || "",
     pic2Name: pic2?.nama || game?.pic2Name || "",
     pic2Cabang: pic2?.cabang || game?.pic2Cabang || "",
-    pic2Nomor: pic2?.nomor || game?.pic2Nomor || "",
   };
 }

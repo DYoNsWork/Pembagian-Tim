@@ -77,7 +77,6 @@ export function parseParticipantsCsv(text) {
       nama,
       jenisKelamin: normalizeGender(cells[1] || ""),
       cabang: (cells[2] || "").trim() || "-",
-      nomor: (cells[3] || "").trim(),
       excluded: false,
     });
   }
@@ -95,6 +94,26 @@ export function listCabangs(participants) {
       (participants || []).map((person) => String(person.cabang || "").trim() || "-"),
     ),
   ].sort((a, b) => a.localeCompare(b, "id"));
+}
+
+export function sortParticipants(list, sortBy = "nama-asc") {
+  const sorted = [...(list || [])];
+  sorted.sort((a, b) => {
+    switch (sortBy) {
+      case "nama-desc":
+        return b.nama.localeCompare(a.nama, "id");
+      case "cabang":
+        return a.cabang.localeCompare(b.cabang, "id") || a.nama.localeCompare(b.nama, "id");
+      case "status":
+        if (Boolean(a.excluded) !== Boolean(b.excluded)) {
+          return a.excluded ? 1 : -1;
+        }
+        return a.nama.localeCompare(b.nama, "id");
+      default:
+        return a.nama.localeCompare(b.nama, "id");
+    }
+  });
+  return sorted;
 }
 
 export function summarizeParticipants(participants) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listCabangs, normalizeGender, parseParticipantsCsv, summarizeParticipants } from "./csv.js";
+import { listCabangs, normalizeGender, parseParticipantsCsv, sortParticipants, summarizeParticipants } from "./csv.js";
 
 const SAMPLE = `Andi,L,Jakarta,01
 Siti,P,Bandung,02
@@ -14,7 +14,6 @@ describe("parseParticipantsCsv", () => {
       nama: "Andi",
       jenisKelamin: "Laki-laki",
       cabang: "Jakarta",
-      nomor: "01",
     });
     expect(participants[1].jenisKelamin).toBe("Perempuan");
     expect(participants[2].jenisKelamin).toBe("Laki-laki");
@@ -27,7 +26,6 @@ describe("parseParticipantsCsv", () => {
       nama: "Rina",
       jenisKelamin: "Perempuan",
       cabang: "Medan",
-      nomor: "A1",
     });
   });
 
@@ -37,7 +35,6 @@ describe("parseParticipantsCsv", () => {
       nama: "Rina",
       jenisKelamin: "Perempuan",
       cabang: "Medan",
-      nomor: "07",
     });
   });
 
@@ -49,10 +46,9 @@ describe("parseParticipantsCsv", () => {
   });
 
   it("menangani BOM dan field berkoma", () => {
-    const { participants } = parseParticipantsCsv('\uFEFF"Sari, S.Pd",P,"Cabang A, Utara",12');
+    const { participants } = parseParticipantsCsv('\uFEFF"Sari, S.Pd",P,"Cabang A, Utara"');
     expect(participants[0].nama).toBe("Sari, S.Pd");
     expect(participants[0].cabang).toBe("Cabang A, Utara");
-    expect(participants[0].nomor).toBe("12");
   });
 
   it("gagal jika file kosong", () => {
@@ -66,6 +62,19 @@ describe("listCabangs", () => {
       "Bandung",
       "Medan",
     ]);
+  });
+});
+
+describe("sortParticipants", () => {
+  it("mengurutkan nama dan cabang", () => {
+    const list = [
+      { nama: "Budi", cabang: "Bandung", excluded: false },
+      { nama: "Andi", cabang: "Jakarta", excluded: true },
+      { nama: "Citra", cabang: "Bandung", excluded: false },
+    ];
+    expect(sortParticipants(list, "nama-asc").map((p) => p.nama)).toEqual(["Andi", "Budi", "Citra"]);
+    expect(sortParticipants(list, "cabang").map((p) => p.nama)).toEqual(["Budi", "Citra", "Andi"]);
+    expect(sortParticipants(list, "status").map((p) => p.nama)).toEqual(["Budi", "Citra", "Andi"]);
   });
 });
 
