@@ -108,6 +108,23 @@ describe("divideTeams", () => {
     expect(perempuanDiTim(result.teams[1])).toBe(2);
   });
 
+  it("tidak memasukkan PIC dan peserta yang di-exclude", () => {
+    const pool = people(8).map((person, index) => ({
+      ...person,
+      id: index + 1,
+      excluded: index === 0,
+    }));
+    const result = divideTeams(
+      pool,
+      { teamCount: 1, membersPerTeam: 4, picIds: [2] },
+      () => 0.999,
+    );
+    const usedIds = result.teams[0].members.map((member) => member.id);
+    expect(usedIds).not.toContain(1);
+    expect(usedIds).not.toContain(2);
+    expect(result.poolSize).toBe(6);
+  });
+
   it("hanya memakai peserta laki-laki", () => {
     const result = divideTeams(people(16), {
       teamCount: 2,

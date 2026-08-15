@@ -1,36 +1,19 @@
-const HEADER_ALIASES = {
-  nama: ["nama", "name", "nama peserta", "peserta", "nama lengkap"],
-  jenisKelamin: [
-    "jenis kelamin",
-    "jk",
-    "gender",
-    "kelamin",
-    "sex",
-    "jenis_kelamin",
-  ],
-  cabang: [
-    "nama cabang",
-    "cabang",
-    "branch",
-    "klub",
-    "asal",
-    "nama_cabang",
-    "kota",
-  ],
-};
+export function normalizeGender(value) {
+  const raw = String(value ?? "").trim();
+  const key = raw.toLowerCase();
 
-function normalizeHeader(value) {
-  return String(value ?? "")
-    .replace(/^\uFEFF/, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ");
+  if (["l", "lk", "laki", "laki-laki", "laki laki", "pria", "male", "m", "cowok"].includes(key)) {
+    return "Laki-laki";
+  }
+  if (["p", "pr", "perempuan", "wanita", "female", "f", "cewek"].includes(key)) {
+    return "Perempuan";
+  }
+  return raw || "-";
 }
 
-function detectDelimiter(headerLine) {
-  const commas = (headerLine.match(/,/g) || []).length;
-  const semicolons = (headerLine.match(/;/g) || []).length;
+function detectDelimiter(firstLine) {
+  const commas = (firstLine.match(/,/g) || []).length;
+  const semicolons = (firstLine.match(/;/g) || []).length;
   return semicolons > commas ? ";" : ",";
 }
 
@@ -66,38 +49,6 @@ function parseCsvLine(line, delimiter) {
   return cells;
 }
 
-function mapHeaderIndex(headers) {
-  const indexes = { nama: -1, jenisKelamin: -1, cabang: -1 };
-
-  headers.forEach((header, index) => {
-    const normalized = normalizeHeader(header);
-    for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
-      if (indexes[field] === -1 && aliases.includes(normalized)) {
-        indexes[field] = index;
-      }
-    }
-  });
-
-  if (indexes.nama === -1 && headers.length >= 1) indexes.nama = 0;
-  if (indexes.jenisKelamin === -1 && headers.length >= 2) indexes.jenisKelamin = 1;
-  if (indexes.cabang === -1 && headers.length >= 3) indexes.cabang = 2;
-
-  return indexes;
-}
-
-export function normalizeGender(value) {
-  const raw = String(value ?? "").trim();
-  const key = raw.toLowerCase();
-
-  if (["l", "lk", "laki", "laki-laki", "laki laki", "pria", "male", "m", "cowok"].includes(key)) {
-    return "Laki-laki";
-  }
-  if (["p", "pr", "perempuan", "wanita", "female", "f", "cewek"].includes(key)) {
-    return "Perempuan";
-  }
-  return raw || "-";
-}
-
 export function parseParticipantsCsv(text) {
   const source = String(text ?? "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const lines = source
@@ -110,19 +61,12 @@ export function parseParticipantsCsv(text) {
   }
 
   const delimiter = detectDelimiter(lines[0]);
-  const headers = parseCsvLine(lines[0], delimiter);
-  const indexes = mapHeaderIndex(headers);
-
-  if (indexes.nama === -1) {
-    throw new Error('Kolom "nama" tidak ditemukan. Gunakan header: nama, jenis kelamin, nama cabang.');
-  }
-
   const participants = [];
   const errors = [];
 
-  for (let i = 1; i < lines.length; i += 1) {
+  for (let i = 0; i < lines.length; i += 1) {
     const cells = parseCsvLine(lines[i], delimiter);
-    const nama = (cells[indexes.nama] || "").trim();
+    const nama = (cells[0] || "").trim();
     if (!nama) {
       errors.push(`Baris ${i + 1}: nama kosong, dilewati.`);
       continue;
@@ -131,8 +75,10 @@ export function parseParticipantsCsv(text) {
     participants.push({
       id: `${i}-${nama}`,
       nama,
-      jenisKelamin: normalizeGender(indexes.jenisKelamin >= 0 ? cells[indexes.jenisKelamin] : ""),
-      cabang: (indexes.cabang >= 0 ? cells[indexes.cabang] : "").trim() || "-",
+      jenisKelamin: normalizeGender(cells[1] || ""),
+      cabang: (cells[2] || "").trim() || "-",
+      nomor: (cells[3] || "").trim(),
+      excluded: false,
     });
   }
 
@@ -147,11 +93,13 @@ export function summarizeParticipants(participants) {
   const cabang = new Set();
   let laki = 0;
   let perempuan = 0;
+  let excluded = 0;
 
   for (const person of participants) {
     cabang.add(person.cabang);
     if (person.jenisKelamin === "Laki-laki") laki += 1;
     if (person.jenisKelamin === "Perempuan") perempuan += 1;
+    if (person.excluded) excluded += 1;
   }
 
   return {
@@ -159,5 +107,6 @@ export function summarizeParticipants(participants) {
     laki,
     perempuan,
     cabang: cabang.size,
+    excluded,
   };
 }

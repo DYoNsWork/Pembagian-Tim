@@ -118,26 +118,63 @@
                 <span class="dropzone-mark">CSV</span>
                 <span>
                   <strong>Seret file ke sini</strong> atau klik untuk memilih.
-                  Kolom yang diperlukan: <code>nama, jenis kelamin, nama cabang</code>
+                  Tanpa header. Baris pertama juga data:
+                  <code>nama, jenis kelamin, nama cabang, nomor</code>
                 </span>
               </label>
               <p class="hint" id="file-status">Belum ada file yang diunggah. Data akan disimpan ke Cloudflare D1.</p>
             </section>
 
-            <section class="panel hidden" id="data-panel">
+            <section class="panel" id="data-panel">
               <div class="panel-head">
                 <h2>Daftar peserta</h2>
-                <p class="muted" id="file-name"></p>
+                <button type="button" class="secondary" id="add-participant">Tambah peserta</button>
               </div>
+              <p class="muted" id="file-name"></p>
               <div class="stats" id="stats"></div>
-              <div class="table-wrap">
+              <form id="participant-editor" class="participant-editor hidden">
+                <input id="participant-edit-id" type="hidden" />
+                <label>
+                  Nama
+                  <input id="participant-name" type="text" maxlength="120" required />
+                </label>
+                <label>
+                  Jenis kelamin
+                  <select id="participant-gender">
+                    <option value="Laki-laki">Laki-laki</option>
+                    <option value="Perempuan">Perempuan</option>
+                  </select>
+                </label>
+                <label>
+                  Nama cabang
+                  <input id="participant-cabang" type="text" maxlength="80" required />
+                </label>
+                <label>
+                  Nomor peserta
+                  <input id="participant-nomor" type="text" maxlength="40" placeholder="Opsional" />
+                </label>
+                <label class="check-row">
+                  <input id="participant-excluded" type="checkbox" />
+                  Tidak ikut permainan / undian
+                </label>
+                <div class="game-editor-actions">
+                  <button type="submit" class="primary">Simpan peserta</button>
+                  <button type="button" class="secondary" id="participant-cancel">Batal</button>
+                </div>
+                <p class="error hidden" id="participant-error"></p>
+              </form>
+              <div class="person-cards" id="participant-cards"></div>
+              <div class="table-wrap" id="participant-table-wrap">
                 <table>
                   <thead>
                     <tr>
                       <th>#</th>
                       <th>Nama</th>
+                      <th>Nomor</th>
                       <th>Jenis kelamin</th>
                       <th>Nama cabang</th>
+                      <th>Status</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody id="participant-rows"></tbody>
@@ -185,6 +222,21 @@
                     Grup per sesi
                     <input id="game-groups-per-session" type="number" min="2" max="16" step="1" required placeholder="2" />
                   </label>
+                  <label>
+                    PIC 1
+                    <select id="game-pic-1" required>
+                      <option value="">Pilih PIC 1</option>
+                    </select>
+                  </label>
+                  <label>
+                    PIC 2
+                    <select id="game-pic-2" required>
+                      <option value="">Pilih PIC 2</option>
+                    </select>
+                  </label>
+                  <p class="hint game-editor-wide">
+                    PIC tidak masuk ke grup saat pengacakan.
+                  </p>
                   <p class="hint game-editor-wide">
                     Berapa grup bertanding di setiap sesi. 2 = satu lawan satu.
                     Pemenang tiap sesi maju sampai juara.
@@ -270,8 +322,6 @@
                 <div class="actions">
                   <select id="draw-history" class="hidden" aria-label="Hasil per permainan"></select>
                   <button type="button" class="secondary" id="reshuffle">Acak ulang</button>
-                  <button type="button" class="secondary" id="export-csv">Unduh hasil CSV</button>
-                  <button type="button" class="secondary" id="print-result">Cetak</button>
                 </div>
               </div>
               <p class="result-meta" id="result-meta"></p>

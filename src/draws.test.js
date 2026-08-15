@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chunk, extraDrawIds, groupDrawMembers, personFromRow } from "./draws.js";
+import { chunk, extraDrawIds, groupDrawMembers, normalizeParticipant, personFromRow } from "./draws.js";
 
 describe("groupDrawMembers", () => {
   it("mengelompokkan anggota tim dan cadangan", () => {
@@ -23,13 +23,43 @@ describe("groupDrawMembers", () => {
 describe("personFromRow", () => {
   it("mengubah kolom D1 ke bentuk aplikasi", () => {
     expect(
-      personFromRow({ id: 9, nama: "Andi", jenis_kelamin: "Laki-laki", cabang: "Jakarta" }),
+      personFromRow({
+        id: 9,
+        nama: "Andi",
+        jenis_kelamin: "Laki-laki",
+        cabang: "Jakarta",
+        nomor: "07",
+        excluded: 1,
+      }),
     ).toEqual({
       id: 9,
       nama: "Andi",
       jenisKelamin: "Laki-laki",
       cabang: "Jakarta",
+      nomor: "07",
+      excluded: true,
     });
+  });
+});
+
+describe("normalizeParticipant", () => {
+  it("wajib nama dan menormalisasi gender serta nomor", () => {
+    expect(
+      normalizeParticipant({
+        nama: "  Andi  ",
+        jenisKelamin: "L",
+        cabang: "Jakarta",
+        nomor: "07",
+        excluded: true,
+      }),
+    ).toEqual({
+      nama: "Andi",
+      jenisKelamin: "Laki-laki",
+      cabang: "Jakarta",
+      nomor: "07",
+      excluded: true,
+    });
+    expect(() => normalizeParticipant({ nama: " " })).toThrow(/nama/i);
   });
 });
 
