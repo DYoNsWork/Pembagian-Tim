@@ -12,6 +12,7 @@
     "db:migrate:local": "wrangler d1 migrations apply pembagian-tim-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply pembagian-tim-db --remote",
     "setup:d1": "node scripts/setup-d1.mjs",
+    "postinstall": "node scripts/ci-postinstall.mjs",
     "test": "vitest run"
   },
   "devDependencies": {
