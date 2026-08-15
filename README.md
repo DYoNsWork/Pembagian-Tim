@@ -13,11 +13,11 @@ Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disi
 1. Siapkan file CSV **tanpa header**. Baris pertama juga data. Urutan kolom:
 
    ```csv
-   Andi Pratama,L,Jakarta,01
-   Siti Rahmawati,P,Bandung,02
+   Andi Pratama,L,Jakarta
+   Siti Rahmawati,P,Bandung
    ```
 
-   Kolom: nama, jenis kelamin, nama cabang, nomor peserta. Excel Indonesia yang memakai titik koma (`;`) juga didukung. Peserta juga bisa ditambah/ubah/hapus satu per satu, atau di-exclude agar tidak ikut undian.
+   Kolom: nama, jenis kelamin, nama cabang. Excel Indonesia yang memakai titik koma (`;`) juga didukung. Peserta bisa ditambah/ubah/hapus satu per satu, diurutkan, atau di-exclude agar tidak ikut undian.
 
 2. Unggah CSV di aplikasi. Data langsung tersimpan di D1, jadi tetap ada setelah halaman di-refresh.
 
@@ -163,6 +163,6 @@ Setelah itu, setiap **push ke branch yang terhubung** akan di-deploy Cloudflare 
 ### Sesudah live
 
 1. Buka URL Workers.
-2. Unggah CSV peserta (`nama, jenis kelamin, nama cabang, nomor`) atau kelola peserta satu per satu.
+2. Unggah CSV peserta (`nama, jenis kelamin, nama cabang`) atau kelola peserta satu per satu.
 3. Data tersimpan di D1 Cloudflare, tidak hilang saat refresh.
 4. Tambah permainan (2 PIC dipilih dari cabang, plus grup per sesi), lalu bagi grup. Hasil dan bagan gugur ada di menu Pembagian.
