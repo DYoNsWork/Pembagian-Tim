@@ -51,6 +51,7 @@ describe("normalizeGame", () => {
       groupsPerSession: 2,
       pic1Id: 1,
       pic2Id: 2,
+      genderMode: "campur",
       labelPrefix: "Panjat Pinang",
     });
   });

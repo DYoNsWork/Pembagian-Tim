@@ -1,18 +1,19 @@
 :root {
   color-scheme: dark;
-  --bg: #0b1210;
-  --ink: #eef4f1;
-  --muted: #9bb0a6;
-  --card: #121a18;
-  --card-2: #17211e;
-  --line: rgba(224, 180, 92, 0.16);
-  --line-strong: rgba(224, 180, 92, 0.28);
-  --green: #3dba8a;
-  --green-dark: #1f7a58;
-  --gold: #e0b45c;
-  --danger: #f07167;
-  --shadow: 0 24px 50px rgba(0, 0, 0, 0.38);
-  --ring: 0 0 0 3px rgba(61, 186, 138, 0.28);
+  --bg: #0a0f0e;
+  --ink: #e8eeeb;
+  --muted: #8fa39a;
+  --card: #111816;
+  --card-2: #161f1c;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(61, 186, 138, 0.22);
+  --green: #2fb67c;
+  --green-dark: #1a6b4a;
+  --gold: #d4a84b;
+  --danger: #e86a62;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --ring: 0 0 0 2px rgba(47, 182, 124, 0.35);
+  --sidebar-w: 208px;
 }
 
 * {
@@ -29,18 +30,20 @@ body {
 
 body {
   font-family: Outfit, "Segoe UI", sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ink);
-  background:
-    radial-gradient(circle at 88% -8%, rgba(224, 180, 92, 0.16), transparent 32%),
-    radial-gradient(circle at 0% 100%, rgba(61, 186, 138, 0.12), transparent 36%),
-    linear-gradient(180deg, #101916 0%, var(--bg) 180px);
+  background: var(--bg);
   min-height: 100vh;
   scrollbar-color: #2d433c transparent;
 }
 
+.app {
+  min-height: 100vh;
+  min-width: 0;
+}
+
 ::selection {
-  background: rgba(61, 186, 138, 0.35);
+  background: rgba(47, 182, 124, 0.35);
   color: #fff;
 }
 
@@ -49,27 +52,22 @@ body {
   box-shadow: var(--ring);
 }
 
-.app {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  min-height: 100vh;
-  min-width: 0;
-}
-
 .sidebar {
-  position: sticky;
+  position: fixed;
+  left: 0;
   top: 0;
+  bottom: 0;
+  width: var(--sidebar-w);
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px 12px;
-  background:
-    linear-gradient(180deg, rgba(61, 186, 138, 0.08), transparent 28%),
-    #0e1614;
+  gap: 14px;
+  padding: 14px 10px;
+  background: #0d1311;
   border-right: 1px solid var(--line);
   color: var(--ink);
-  z-index: 20;
+  z-index: 30;
+  overflow-y: auto;
 }
 
 .sidebar-brand {
@@ -193,9 +191,10 @@ body {
 }
 
 .page {
-  width: min(960px, 100%);
-  margin: 0 auto;
-  padding: 16px 16px 48px;
+  margin-left: var(--sidebar-w);
+  width: auto;
+  max-width: 900px;
+  padding: 14px 16px 48px;
   min-width: 0;
 }
 
@@ -204,7 +203,7 @@ body {
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 14px;
 }
 
 .topbar h1 {
@@ -509,6 +508,243 @@ th {
 
 tbody tr:hover {
   background: rgba(255, 255, 255, 0.03);
+}
+
+.draw-compact {
+  display: grid;
+  gap: 10px;
+}
+
+.draw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.param-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.param-item {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+}
+
+.param-item span {
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.param-item strong {
+  font-size: 0.88rem;
+}
+
+.param-item.is-warn strong {
+  color: var(--danger);
+}
+
+.hint.is-warn {
+  color: var(--danger);
+}
+
+.tourney-board {
+  display: grid;
+  gap: 12px;
+}
+
+.tourney-champion {
+  display: inline-grid;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(212, 168, 75, 0.35);
+  background: rgba(212, 168, 75, 0.1);
+  color: var(--gold);
+}
+
+.tourney-champion span {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.tourney-flow {
+  display: grid;
+  gap: 10px;
+}
+
+.tourney-round {
+  display: grid;
+  gap: 8px;
+}
+
+.tourney-round-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tourney-sessions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.tourney-connector {
+  text-align: center;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.session-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card-2);
+  overflow: hidden;
+}
+
+.session-card.is-done {
+  border-color: rgba(47, 182, 124, 0.35);
+}
+
+.session-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--line);
+}
+
+.session-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.session-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--green);
+}
+
+.session-body {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.session-body.is-compact {
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.session-vs {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+}
+
+.session-team {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #101614;
+}
+
+.session-team.is-winner {
+  border-color: var(--green);
+  box-shadow: inset 0 0 0 1px rgba(47, 182, 124, 0.25);
+}
+
+.session-team header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(47, 182, 124, 0.1);
+  font-size: 0.82rem;
+}
+
+.team-roster {
+  margin: 0;
+  padding: 6px 8px 8px 22px;
+  font-size: 0.78rem;
+}
+
+.team-roster li {
+  margin: 4px 0;
+}
+
+.team-roster small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.session-slot,
+.team-pick {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #101614;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+button.team-pick,
+button.session-slot {
+  cursor: pointer;
+}
+
+button.team-pick:hover {
+  border-color: var(--green);
+}
+
+.session-slot.is-winner,
+.team-pick.is-winner {
+  background: rgba(47, 182, 124, 0.18);
+  border-color: var(--green);
+  color: #d8f3e6;
+}
+
+.session-slot.is-pending {
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.session-bye {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 6px 8px;
+  font-size: 0.78rem;
+  color: var(--gold);
+  background: rgba(212, 168, 75, 0.08);
+  border-radius: 8px;
 }
 
 .game-fieldset {
@@ -1291,14 +1527,36 @@ footer {
     text-size-adjust: 100%;
   }
 
-  .app {
-    grid-template-columns: 1fr;
-  }
-
   .sidebar,
   .nav-backdrop,
   footer {
     display: none !important;
+  }
+
+  .page {
+    margin-left: 0;
+    max-width: none;
+    width: 100%;
+    padding: 12px 12px calc(88px + env(safe-area-inset-bottom));
+  }
+
+  h1 {
+    font-size: 1.1rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .param-grid,
+  .tourney-sessions {
+    grid-template-columns: 1fr;
+  }
+
+  .session-body.is-compact {
+    grid-template-columns: 1fr;
+  }
+
+  .session-vs {
+    padding: 2px 0;
   }
 
   .topbar-user {
@@ -1315,7 +1573,7 @@ footer {
     justify-content: space-around;
     gap: 4px;
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
-    background: #0e1614;
+    background: #0d1311;
     border-top: 1px solid var(--line);
   }
 
@@ -1340,34 +1598,7 @@ footer {
 
   .bottom-nav-item.is-active {
     color: var(--gold);
-    background: rgba(224, 180, 92, 0.12);
-  }
-
-  .page {
-    width: 100%;
-    padding: 12px 12px calc(88px + env(safe-area-inset-bottom));
-  }
-
-  h1 {
-    font-size: 1.1rem;
-    line-height: 1.2;
-    overflow-wrap: anywhere;
-  }
-
-  .pic-picker,
-  .pic-box {
-    grid-template-columns: 1fr;
-  }
-
-  .topbar {
-    align-items: center;
-    gap: 8px;
-  }
-
-  .topbar-user {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
+    background: rgba(212, 168, 75, 0.12);
   }
 
   .user-chip {

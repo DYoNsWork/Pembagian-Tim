@@ -28,13 +28,12 @@ const resultEmpty = document.querySelector("#result-empty");
 const drawEmpty = document.querySelector("#draw-empty");
 const statsEl = document.querySelector("#stats");
 const rowsEl = document.querySelector("#participant-rows");
-const teamCountInput = document.querySelector("#team-count");
-const membersInput = document.querySelector("#members-per-team");
-const genderModes = document.querySelector("#gender-modes");
-const selectedGameLabel = document.querySelector("#selected-game-label");
+const drawParams = document.querySelector("#draw-params");
+const drawPoolHint = document.querySelector("#draw-pool-hint");
+const drawLockedHint = document.querySelector("#draw-locked-hint");
 const drawGameSelect = document.querySelector("#draw-game");
-const drawReplaceHint = document.querySelector("#draw-replace-hint");
 const drawSubmit = document.querySelector("#draw-submit");
+const reshuffleBtn = document.querySelector("#reshuffle");
 const gameGrid = document.querySelector("#game-grid");
 const gamesEmpty = document.querySelector("#games-empty");
 const gameEditor = document.querySelector("#game-editor");
@@ -43,6 +42,7 @@ const gameNameInput = document.querySelector("#game-name");
 const gameTeamCountInput = document.querySelector("#game-team-count");
 const gameMembersInput = document.querySelector("#game-members");
 const gameGroupsPerSessionInput = document.querySelector("#game-groups-per-session");
+const gameGenderModeInput = document.querySelector("#game-gender-mode");
 const gamePic1Cabang = document.querySelector("#game-pic-1-cabang");
 const gamePic2Cabang = document.querySelector("#game-pic-2-cabang");
 const gamePic1Input = document.querySelector("#game-pic-1");
@@ -53,12 +53,10 @@ const gameDescriptionInput = document.querySelector("#game-description");
 const participantEditor = document.querySelector("#participant-editor");
 const participantCards = document.querySelector("#participant-cards");
 const gameError = document.querySelector("#game-error");
-const needBox = document.querySelector("#need-box");
 const configForm = document.querySelector("#config-form");
 const configError = document.querySelector("#config-error");
-const teamsEl = document.querySelector("#teams");
+const tourneyBoard = document.querySelector("#tourney-board");
 const leftoverEl = document.querySelector("#leftover");
-const bracketEl = document.querySelector("#bracket");
 const resultMeta = document.querySelector("#result-meta");
 const resultTitle = document.querySelector("#result-title");
 const cloudStatus = document.querySelector("#cloud-status");
@@ -104,16 +102,19 @@ function selectedGame() {
   return getGame(selectedGameId, games);
 }
 
-function selectedGenderMode() {
-  const checked = genderModes.querySelector("input[name='gender-mode']:checked");
-  return normalizeGenderMode(checked?.value);
+function isAdmin() {
+  return currentUser?.role === "admin";
 }
 
-function poolParticipants() {
-  const game = selectedGame();
+function drawForGame(gameId) {
+  return draws.find((draw) => draw.gameId === gameId);
+}
+
+function poolForGame(game) {
+  if (!game) return [];
   return eligibleParticipants(participants, {
-    genderMode: selectedGenderMode(),
-    picIds: [game?.pic1Id, game?.pic2Id],
+    genderMode: game.genderMode || "campur",
+    picIds: [game.pic1Id, game.pic2Id],
   });
 }
 
@@ -176,9 +177,9 @@ function applyAccessUi() {
   document.querySelector("#add-game")?.classList.toggle("hidden", !can("permainan"));
   document.querySelector("#add-participant")?.classList.toggle("hidden", !can("peserta"));
   document.body.classList.toggle("can-edit-peserta", can("peserta"));
-  document.querySelector("#reshuffle")?.classList.toggle("hidden", !can("pembagian"));
   document.querySelector("#upload-panel")?.classList.toggle("hidden", !can("peserta"));
   document.querySelector("#draw-panel")?.classList.toggle("hidden", !can("pembagian"));
+  updateDrawPanel();
 }
 
 function selectedRights() {
@@ -196,55 +197,55 @@ function setGames(list, { keepSelection = true } = {}) {
   updateDrawPanel();
 }
 
-function updateGenderCounts() {
-  const game = selectedGame();
-  const picIds = [game?.pic1Id, game?.pic2Id];
-  const campur = eligibleParticipants(participants, { genderMode: "campur", picIds });
-  const laki = eligibleParticipants(participants, { genderMode: "laki-laki", picIds });
-  const perempuan = eligibleParticipants(participants, { genderMode: "perempuan", picIds });
-  document.querySelector("#count-campur").textContent = `${campur.length} peserta`;
-  document.querySelector("#count-laki").textContent = `${laki.length} orang`;
-  document.querySelector("#count-perempuan").textContent = `${perempuan.length} orang`;
-  genderModes.querySelectorAll(".gender-mode").forEach((card) => {
-    const input = card.querySelector("input");
-    card.classList.toggle("is-selected", input?.checked);
-  });
-}
-
-function updateNeed() {
-  const teams = Number(teamCountInput.value);
-  const size = Number(membersInput.value);
-  const needed = teams * size;
-  const pool = poolParticipants();
-  const enough = Number.isInteger(needed) && needed > 0 && pool.length >= needed;
-  const game = selectedGame();
-  const mode = genderModeLabel(selectedGenderMode());
-  const label = game ? `${game.name} · ${mode}` : mode;
-  needBox.innerHTML = `${escapeHtml(label)}: <strong>${needed || 0} orang</strong> dari ${pool.length} peserta`;
-  needBox.classList.toggle("is-short", !enough);
+function renderDrawParams(game) {
+  if (!game) {
+    hide(drawParams);
+    drawParams.innerHTML = "";
+    return;
+  }
+  const needed = game.teamCount * game.members;
+  const pool = poolForGame(game);
+  const enough = pool.length >= needed;
+  show(drawParams);
+  drawParams.innerHTML = [
+    ["Komposisi", genderModeLabel(game.genderMode)],
+    ["Grup", `${game.teamCount} tim`],
+    ["Anggota", `${game.members} / tim`],
+    ["Sesi", `${game.groupsPerSession} tim / sesi`],
+    ["Kebutuhan", `${needed} peserta`],
+    ["Tersedia", `${pool.length} peserta`],
+  ]
+    .map(
+      ([label, value]) =>
+        `<div class="param-item${label === "Tersedia" && !enough ? " is-warn" : ""}"><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`,
+    )
+    .join("");
+  drawPoolHint.textContent = enough
+    ? "Parameter diambil dari definisi permainan. Klik Acak grup untuk mengundi."
+    : `Peserta tidak cukup. Butuh ${needed}, tersedia ${pool.length} (setelah PIC & exclude).`;
+  drawPoolHint.classList.toggle("is-warn", !enough);
 }
 
 function updateDrawPanel() {
-  updateGenderCounts();
   renderGameSelect();
   const game = selectedGame();
-  const existing = draws.find((draw) => draw.gameId === selectedGameId);
-  selectedGameLabel.textContent = game
-    ? `${game.name}: ${game.teamCount} grup × ${game.members} orang · ${game.groupsPerSession} grup per sesi.`
-    : "Pilih permainan dari menu tarik-turun.";
+  const existing = drawForGame(selectedGameId);
+  renderDrawParams(game);
   renderPicBox(drawPicBox, game);
-  drawReplaceHint.classList.toggle("hidden", !existing);
-  drawSubmit.textContent = existing ? "Ganti hasil acak" : "Bagi grup secara acak";
-  const ready = Boolean(participants.length && games.length);
+  const ready = Boolean(participants.length && games.length && game);
   const canDraw = can("pembagian");
   configForm.classList.toggle("hidden", !canDraw || !ready);
   drawEmpty.classList.toggle("hidden", !canDraw || ready);
   if (canDraw && !ready) {
     drawEmpty.textContent = !participants.length
-      ? "Unggah peserta dulu di menu Peserta, lalu kembali ke Pembagian."
-      : "Tambah permainan di menu Permainan, lalu pilih dari menu tarik-turun di Pembagian.";
+      ? "Unggah peserta dulu di menu Peserta."
+      : "Tambah permainan di menu Permainan.";
   }
-  updateNeed();
+  const locked = Boolean(existing);
+  drawSubmit.classList.toggle("hidden", locked);
+  drawLockedHint.classList.toggle("hidden", !locked);
+  reshuffleBtn.classList.toggle("hidden", !locked || !isAdmin());
+  drawSubmit.disabled = !game || poolForGame(game).length < (game?.teamCount || 0) * (game?.members || 0);
 }
 
 function renderGamePicker() {
@@ -263,7 +264,7 @@ function renderGamePicker() {
       <article class="game-card" data-game-id="${escapeHtml(game.id)}">
         <div class="game-card-body">
           <span class="game-card-name">${escapeHtml(game.name)}</span>
-          <span class="game-card-size">${game.teamCount} grup · ${game.members} orang · ${game.groupsPerSession} /sesi</span>
+          <span class="game-card-size">${game.teamCount} grup · ${game.members} org · ${game.groupsPerSession} /sesi · ${escapeHtml(genderModeLabel(game.genderMode))}</span>
           <span class="game-card-size">PIC 1: ${escapeHtml(formatPicLine(game.pic1Name, game.pic1Cabang, game.pic1Nomor) || "belum dipilih")}</span>
           <span class="game-card-size">PIC 2: ${escapeHtml(formatPicLine(game.pic2Name, game.pic2Cabang, game.pic2Nomor) || "belum dipilih")}</span>
           <span class="game-card-desc">${escapeHtml(game.description || "Tidak ada penjelasan.")}</span>
@@ -304,8 +305,6 @@ function applyGame(gameId) {
     return;
   }
   selectedGameId = game.id;
-  teamCountInput.value = String(game.teamCount);
-  membersInput.value = String(game.members);
   renderGamePicker();
   updateDrawPanel();
 }
@@ -326,6 +325,7 @@ function openGameEditor(game) {
     gameTeamCountInput.value = String(game.teamCount);
     gameMembersInput.value = String(game.members);
     gameGroupsPerSessionInput.value = String(game.groupsPerSession || 2);
+    gameGenderModeInput.value = normalizeGenderMode(game.genderMode);
     fillPicSelects(game.pic1Id, game.pic2Id);
   } else {
     gameEditId.value = "";
@@ -334,6 +334,7 @@ function openGameEditor(game) {
     gameTeamCountInput.value = "";
     gameMembersInput.value = "";
     gameGroupsPerSessionInput.value = "2";
+    gameGenderModeInput.value = "campur";
     fillPicSelects("", "");
   }
   show(gameEditor);
@@ -588,37 +589,12 @@ function renderResult(result) {
   resultMeta.innerHTML = [
     `<span class="meta-chip">${escapeHtml(modeLabel)}</span>`,
     `<span class="meta-chip">${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota</span>`,
-    result.groupsPerSession ? `<span class="meta-chip">${result.groupsPerSession} grup per sesi</span>` : "",
+    result.groupsPerSession ? `<span class="meta-chip">${result.groupsPerSession} grup / sesi</span>` : "",
     `<span class="meta-chip">${result.used} / ${pool} peserta</span>`,
     result.createdAt ? `<span class="meta-chip muted-chip">${escapeHtml(formatTime(result.createdAt))}</span>` : "",
   ].join("");
-  renderBracket(result);
-  teamsEl.innerHTML = result.teams
-    .map(
-      (team) => `
-        <article class="team-card">
-          <header>
-            <strong>${escapeHtml(team.name)}</strong>
-            <span>${team.members.length} orang</span>
-          </header>
-          <ol>
-            ${team.members
-              .map(
-                (member) => `
-                  <li>
-                    <strong>${escapeHtml(member.nama)}</strong>
-                    <span class="member-meta">${genderBadge(member.jenisKelamin)} · ${escapeHtml(member.cabang)}</span>
-                  </li>
-                `,
-              )
-              .join("")}
-          </ol>
-        </article>
-      `,
-    )
-    .join("");
-
   renderPicBox(resultPicBox, result);
+  renderTourneyBoard(result);
 
   if (result.leftover.length) {
     leftoverEl.classList.remove("hidden");
@@ -632,12 +608,6 @@ function renderResult(result) {
 
   if (result.gameId) {
     selectedGameId = games.some((game) => game.id === result.gameId) ? result.gameId : selectedGameId;
-    teamCountInput.value = String(result.teamCount || result.teams.length);
-    membersInput.value = String(
-      result.membersPerTeam || result.teams[0]?.members.length || selectedGame()?.members || 1,
-    );
-    const modeInput = genderModes.querySelector(`input[value="${normalizeGenderMode(result.genderMode)}"]`);
-    if (modeInput) modeInput.checked = true;
     renderGamePicker();
     updateDrawPanel();
   }
@@ -652,87 +622,105 @@ function formatTime(value) {
   return date.toLocaleString("id-ID");
 }
 
-function renderBracket(result) {
+function renderCompactSlot(slot, match) {
+  const winner = match.winnerNumber === slot.number;
+  if (can("hasil") && !slot.pending) {
+    return `<button type="button" class="session-slot team-pick${winner ? " is-winner" : ""}" data-match-id="${escapeHtml(match.id)}" data-winner="${slot.number}">${escapeHtml(slot.name)}</button>`;
+  }
+  return `<div class="session-slot${winner ? " is-winner" : ""}">${escapeHtml(slot.name)}</div>`;
+}
+
+function renderSessionTeamCard(team, match) {
+  const winner = match.winnerNumber === team.number;
+  const title = can("hasil")
+    ? `<button type="button" class="team-pick${winner ? " is-winner" : ""}" data-match-id="${escapeHtml(match.id)}" data-winner="${team.number}">${escapeHtml(team.name)}</button>`
+    : `<strong>${escapeHtml(team.name)}</strong>`;
+  return `
+    <article class="session-team${winner ? " is-winner" : ""}">
+      <header>${title}<span>${team.members.length} org</span></header>
+      <ol class="team-roster">
+        ${team.members
+          .map(
+            (member) =>
+              `<li><span>${escapeHtml(member.nama)}</span><small>${genderBadge(member.jenisKelamin)} · ${escapeHtml(member.cabang)}</small></li>`,
+          )
+          .join("")}
+      </ol>
+    </article>`;
+}
+
+function renderTourneyBoard(result) {
   const bracket = result?.bracket;
+  const teamsMap = new Map((result?.teams || []).map((team) => [team.number, team]));
+
   if (!bracket?.rounds?.length) {
-    hide(bracketEl);
-    bracketEl.innerHTML = "";
+    tourneyBoard.innerHTML = (result?.teams || [])
+      .map(
+        (team) => `
+          <article class="session-team">
+            <header><strong>${escapeHtml(team.name)}</strong><span>${team.members.length} org</span></header>
+            <ol class="team-roster">
+              ${team.members
+                .map(
+                  (member) =>
+                    `<li><span>${escapeHtml(member.nama)}</span><small>${genderBadge(member.jenisKelamin)} · ${escapeHtml(member.cabang)}</small></li>`,
+                )
+                .join("")}
+            </ol>
+          </article>`,
+      )
+      .join("");
     return;
   }
 
-  const k = bracket.groupsPerSession || result.groupsPerSession || 2;
   const champion = bracket.champion;
-  const gameTitle = result.gameName || "Pertandingan";
-  bracketEl.innerHTML = `
-    <div class="bracket-head">
-      <div>
-        <p class="eyebrow">Bagan sistem gugur</p>
-        <h3>${escapeHtml(gameTitle)}</h3>
-        <p>${k} grup per sesi. Klik pemenang agar maju ke babak berikutnya.</p>
-      </div>
-      ${
-        champion
-          ? `<div class="bracket-champion"><span>Juara</span><strong>${escapeHtml(champion.name)}</strong></div>`
-          : ""
-      }
-    </div>
-    <div class="bracket-board">
-      <div class="bracket-rounds">
-        ${bracket.rounds
-          .map(
-            (round) => `
-              <section class="bracket-round">
-                <h4>${escapeHtml(round.name)}</h4>
-                <div class="bracket-round-matches">
-                  ${(round.matches || [])
-                    .map(
-                      (match) => `
-                        <article class="bracket-match${match.winnerNumber ? " has-winner" : ""}">
-                          <p class="bracket-session">Sesi ${match.session}</p>
-                          <div class="bracket-teams">
-                            ${bracketTeamsHtml(match)}
-                          </div>
-                        </article>
-                      `,
-                    )
-                    .join("")}
-                  ${
-                    round.byeTeams?.length
-                      ? `<p class="bracket-bye">Lolos otomatis: ${round.byeTeams
-                          .map((team) => escapeHtml(team.name))
-                          .join(", ")}</p>`
-                      : ""
-                  }
-                </div>
-              </section>
-            `,
-          )
-          .join("")}
-      </div>
-    </div>
-  `;
-  show(bracketEl);
-}
+  let html = champion
+    ? `<div class="tourney-champion"><span>Juara</span><strong>${escapeHtml(champion.name)}</strong></div>`
+    : "";
 
-function bracketTeamsHtml(match) {
-  const teams = match.teams || [];
-  return teams
-    .map((team, index) => {
-      const slot = bracketSlot(team, match);
-      if (teams.length === 2 && index === 0) {
-        return `${slot}<span class="bracket-vs" aria-hidden="true">VS</span>`;
-      }
-      return slot;
-    })
-    .join("");
-}
+  html += `<div class="tourney-flow">`;
+  bracket.rounds.forEach((round, roundIndex) => {
+    const showRoster = roundIndex === 0;
+    html += `<section class="tourney-round">
+      <h3 class="tourney-round-title">${escapeHtml(round.name)}</h3>
+      <div class="tourney-sessions">`;
 
-function bracketSlot(team, match) {
-  if (!team || team.pending) {
-    return `<span class="bracket-slot is-pending">${escapeHtml(team?.label || "Menunggu pemenang")}</span>`;
-  }
-  const winner = match.winnerNumber === team.number;
-  return `<button type="button" class="bracket-slot${winner ? " is-winner" : ""}" data-match-id="${escapeHtml(match.id)}" data-winner="${team.number}">${escapeHtml(team.name)}</button>`;
+    for (const match of round.matches || []) {
+      const done = Boolean(match.winnerNumber);
+      html += `<article class="session-card${done ? " is-done" : ""}">
+        <header class="session-head">
+          <span class="session-label">Sesi ${match.session}</span>
+          ${done ? `<span class="session-badge">Selesai</span>` : ""}
+        </header>
+        <div class="session-body${showRoster ? "" : " is-compact"}">`;
+
+      const slots = match.teams || [];
+      slots.forEach((slot, index) => {
+        if (index > 0 && slots.length === 2) html += `<span class="session-vs">vs</span>`;
+        if (!slot || slot.pending) {
+          html += `<div class="session-slot is-pending">${escapeHtml(slot?.label || "Menunggu")}</div>`;
+        } else if (showRoster) {
+          const full = teamsMap.get(slot.number);
+          html += full ? renderSessionTeamCard(full, match) : renderCompactSlot(slot, match);
+        } else {
+          html += renderCompactSlot(slot, match);
+        }
+      });
+
+      html += `</div></article>`;
+    }
+
+    if (round.byeTeams?.length) {
+      html += `<p class="session-bye">Lolos otomatis: ${round.byeTeams.map((team) => escapeHtml(team.name)).join(", ")}</p>`;
+    }
+
+    html += `</div></section>`;
+    if (roundIndex < bracket.rounds.length - 1) {
+      html += `<div class="tourney-connector" aria-hidden="true">↓</div>`;
+    }
+  });
+  html += `</div>`;
+  tourneyBoard.innerHTML = html;
 }
 
 function gamePayload() {
@@ -742,6 +730,7 @@ function gamePayload() {
     teamCount: Number(gameTeamCountInput.value),
     members: Number(gameMembersInput.value),
     groupsPerSession: Number(gameGroupsPerSessionInput.value),
+    genderMode: gameGenderModeInput.value,
     pic1Id: Number(gamePic1Input.value) || null,
     pic2Id: Number(gamePic2Input.value) || null,
   };
@@ -815,10 +804,11 @@ async function refreshDrawHistory(selectedId) {
   updateDrawPanel();
 }
 
-async function runDraw({ confirmReplace = true } = {}) {
+async function runDraw({ replace = false } = {}) {
   hide(configError);
-  if (!selectedGame()) {
-    configError.textContent = "Pilih permainan dari menu tarik-turun.";
+  const game = selectedGame();
+  if (!game) {
+    configError.textContent = "Pilih permainan.";
     show(configError);
     return;
   }
@@ -828,28 +818,33 @@ async function runDraw({ confirmReplace = true } = {}) {
     showView("peserta");
     return;
   }
-  const existing = draws.find((draw) => draw.gameId === selectedGameId);
-  if (confirmReplace && existing) {
-    if (!confirm(`Sudah ada hasil untuk “${selectedGame().name}”. Ganti dengan acakan baru?`)) {
-      return;
-    }
+  const existing = drawForGame(selectedGameId);
+  if (existing && !replace) {
+    configError.textContent = "Hasil acak sudah ada. Hanya admin yang bisa mengacak ulang.";
+    show(configError);
+    return;
+  }
+  if (replace && !isAdmin()) {
+    configError.textContent = "Hanya admin yang bisa mengacak ulang.";
+    show(configError);
+    return;
+  }
+  if (replace && !confirm(`Acak ulang grup untuk “${game.name}”? Hasil lama akan diganti.`)) {
+    return;
   }
   try {
     const result = await api("/api/draws", {
       method: "POST",
       body: JSON.stringify({
-        teamCount: Number(teamCountInput.value),
-        membersPerTeam: Number(membersInput.value),
         gameId: selectedGameId,
-        genderMode: selectedGenderMode(),
-        groupsPerSession: selectedGame().groupsPerSession,
+        replace,
       }),
     });
     renderResult(result);
     setCloudStatus(
       result.replaced
         ? `Hasil ${result.gameName} diganti dengan acakan baru`
-        : `Grup ${result.gameName} tersimpan di Cloudflare D1`,
+        : `Grup ${result.gameName} tersimpan`,
     );
     await refreshDrawHistory(result.id);
     showView("pembagian");
@@ -1113,20 +1108,17 @@ gamePic2Cabang.addEventListener("change", () => {
   fillPicPair(gamePic2Cabang, gamePic2Input, gamePic2Cabang.value, "");
 });
 
-genderModes.addEventListener("change", updateDrawPanel);
 drawGameSelect.addEventListener("change", () => {
   applyGame(drawGameSelect.value);
 });
-teamCountInput.addEventListener("input", updateNeed);
-membersInput.addEventListener("input", updateNeed);
 
 configForm.addEventListener("submit", (event) => {
   event.preventDefault();
   runDraw();
 });
 
-document.querySelector("#reshuffle").addEventListener("click", () => {
-  runDraw({ confirmReplace: false });
+reshuffleBtn.addEventListener("click", () => {
+  runDraw({ replace: true });
 });
 
 document.querySelector("#add-participant").addEventListener("click", () => openParticipantEditor());
@@ -1142,7 +1134,7 @@ dataPanel.addEventListener("click", (event) => {
   if (button.dataset.personAction === "delete") removeParticipant(id);
 });
 
-bracketEl.addEventListener("click", async (event) => {
+tourneyBoard.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-match-id]");
   if (!(button instanceof HTMLButtonElement) || !lastResult?.id) return;
   try {

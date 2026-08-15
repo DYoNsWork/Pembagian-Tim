@@ -158,7 +158,7 @@ async function handleApi(request, env, url) {
   if (path === "/api/draws" && request.method === "POST") {
     requireRight(user, "pembagian");
     const body = await readJson(request);
-    return json(await createDraw(env, body), 201);
+    return json(await createDraw(env, body, user), 201);
   }
 
   const drawMatch = path.match(/^\/api\/draws\/(\d+)$/);
@@ -295,7 +295,7 @@ async function listDraws(env) {
 
 async function listGames(env) {
   const { results } = await env.DB.prepare(
-    "SELECT id, name, members, team_count, groups_per_session, pic1_id, pic2_id, description, label_prefix, is_builtin, sort_order FROM games ORDER BY sort_order ASC, name ASC",
+    "SELECT id, name, members, team_count, groups_per_session, pic1_id, pic2_id, gender_mode, description, label_prefix, is_builtin, sort_order FROM games ORDER BY sort_order ASC, name ASC",
   ).all();
   const people = await env.DB.prepare("SELECT id, nama, jenis_kelamin, cabang, nomor, excluded FROM participants").all();
   const byId = new Map((people.results || []).map((row) => [Number(row.id), personFromRow(row)]));
@@ -311,7 +311,7 @@ async function createGame(env, body) {
   const parsed = normalizeGame(body, { existingIds: games.map((game) => game.id) });
   const sortOrder = games.reduce((max, game) => Math.max(max, game.sortOrder), 0) + 1;
   await env.DB.prepare(
-    "INSERT INTO games (id, name, members, team_count, groups_per_session, pic1_id, pic2_id, description, label_prefix, is_builtin, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
+    "INSERT INTO games (id, name, members, team_count, groups_per_session, pic1_id, pic2_id, gender_mode, description, label_prefix, is_builtin, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
   )
     .bind(
       parsed.id,
@@ -321,6 +321,7 @@ async function createGame(env, body) {
       parsed.groupsPerSession,
       parsed.pic1Id,
       parsed.pic2Id,
+      parsed.genderMode,
       parsed.description,
       parsed.labelPrefix,
       sortOrder,
@@ -341,7 +342,7 @@ async function updateGame(env, id, body) {
 
   const parsed = normalizeGame(body, { id, existingIds: games.map((game) => game.id) });
   await env.DB.prepare(
-    "UPDATE games SET name = ?, members = ?, team_count = ?, groups_per_session = ?, pic1_id = ?, pic2_id = ?, description = ?, label_prefix = ? WHERE id = ?",
+    "UPDATE games SET name = ?, members = ?, team_count = ?, groups_per_session = ?, pic1_id = ?, pic2_id = ?, gender_mode = ?, description = ?, label_prefix = ? WHERE id = ?",
   )
     .bind(
       parsed.name,
@@ -350,6 +351,7 @@ async function updateGame(env, id, body) {
       parsed.groupsPerSession,
       parsed.pic1Id,
       parsed.pic2Id,
+      parsed.genderMode,
       parsed.description,
       parsed.labelPrefix,
       id,
@@ -377,7 +379,7 @@ async function deleteGame(env, id) {
   return { ok: true, deletedId: id, games: await listGames(env) };
 }
 
-async function createDraw(env, body) {
+async function createDraw(env, body, user) {
   const games = await listGames(env);
   if (!games.length) {
     throw Object.assign(new Error("Belum ada jenis permainan. Tambah permainan dulu."), {
@@ -388,19 +390,20 @@ async function createDraw(env, body) {
   if (!game) {
     throw Object.assign(new Error("Pilih jenis permainan yang valid."), { status: 400 });
   }
-  const teamCount = Number(body?.teamCount) || game.teamCount;
-  const membersPerTeam = Number(body?.membersPerTeam) || game.members;
-  const genderMode = normalizeGenderMode(body?.genderMode);
-  const groupsPerSession = Number(body?.groupsPerSession) || game.groupsPerSession || 2;
-  if (
-    !Number.isInteger(groupsPerSession) ||
-    groupsPerSession < 2 ||
-    groupsPerSession > MAX_GROUPS_PER_SESSION
-  ) {
+  const teamCount = game.teamCount;
+  const membersPerTeam = game.members;
+  const genderMode = normalizeGenderMode(game.genderMode);
+  const groupsPerSession = game.groupsPerSession || 2;
+  const existing = await env.DB.prepare("SELECT id FROM draws WHERE game_id = ?").bind(game.id).first();
+  const replace = Boolean(body?.replace);
+  if (existing && !replace) {
     throw Object.assign(
-      new Error(`Grup per sesi harus bilangan 2–${MAX_GROUPS_PER_SESSION}.`),
-      { status: 400 },
+      new Error("Hasil acak sudah ada untuk permainan ini. Hanya admin yang bisa mengacak ulang."),
+      { status: 409 },
     );
+  }
+  if (existing && replace && user?.role !== "admin") {
+    throw Object.assign(new Error("Hanya admin yang bisa mengacak ulang."), { status: 403 });
   }
   const stored = await listParticipants(env);
   const picIds = [game.pic1Id, game.pic2Id];
@@ -423,7 +426,6 @@ async function createDraw(env, body) {
 
   const bracket = buildKnockoutBracket(result.teams, groupsPerSession);
 
-  const existing = await env.DB.prepare("SELECT id FROM draws WHERE game_id = ?").bind(game.id).first();
   if (existing) {
     await deleteDraw(env, existing.id);
   }
@@ -597,6 +599,9 @@ async function ensureGameSchema(env) {
   }
   if (!columns.has("pic2_id")) {
     await env.DB.prepare("ALTER TABLE games ADD COLUMN pic2_id INTEGER").run();
+  }
+  if (!columns.has("gender_mode")) {
+    await env.DB.prepare("ALTER TABLE games ADD COLUMN gender_mode TEXT NOT NULL DEFAULT 'campur'").run();
   }
 
   const cleared = await env.DB.prepare("SELECT value FROM meta WHERE key = ?")

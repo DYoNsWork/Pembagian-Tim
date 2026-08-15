@@ -218,6 +218,14 @@
                     Grup per sesi
                     <input id="game-groups-per-session" type="number" min="2" max="16" step="1" required placeholder="2" />
                   </label>
+                  <label>
+                    Komposisi grup
+                    <select id="game-gender-mode" required>
+                      <option value="campur">Campur</option>
+                      <option value="laki-laki">Laki-laki saja</option>
+                      <option value="perempuan">Perempuan saja</option>
+                    </select>
+                  </label>
                   <div class="pic-picker game-editor-wide">
                     <p class="pic-picker-title">PIC 1</p>
                     <label>
@@ -273,73 +281,32 @@
               <p class="empty-games hidden" id="draw-empty">
                 Unggah peserta dan tambah permainan dulu, lalu kembali ke menu Pembagian.
               </p>
-              <form id="config-form" class="draw-settings hidden">
+              <form id="config-form" class="draw-compact hidden">
                 <label class="game-select-wide">
                   Permainan
                   <select id="draw-game" required>
                     <option value="">Pilih permainan</option>
                   </select>
                 </label>
-                <p class="hint" id="selected-game-label">Pilih permainan yang akan diundi.</p>
+                <div id="draw-params" class="param-grid hidden"></div>
                 <div class="pic-box hidden" id="draw-pic-box"></div>
-                <p class="hint hidden" id="draw-replace-hint">
-                  Permainan ini sudah punya hasil acak. Membagi lagi akan mengganti hasil yang ada.
-                </p>
-                <fieldset class="gender-fieldset">
-                  <legend>Komposisi grup</legend>
-                  <div class="gender-modes" id="gender-modes" role="radiogroup" aria-label="Komposisi grup">
-                    <label class="gender-mode is-selected">
-                      <input type="radio" name="gender-mode" value="campur" checked />
-                      <span>Campur</span>
-                      <small id="count-campur">0 peserta</small>
-                    </label>
-                    <label class="gender-mode">
-                      <input type="radio" name="gender-mode" value="laki-laki" />
-                      <span>Laki-laki</span>
-                      <small id="count-laki">0 orang</small>
-                    </label>
-                    <label class="gender-mode">
-                      <input type="radio" name="gender-mode" value="perempuan" />
-                      <span>Perempuan</span>
-                      <small id="count-perempuan">0 orang</small>
-                    </label>
-                  </div>
-                </fieldset>
-                <div class="config-grid">
-                  <label>
-                    Jumlah grup
-                    <input id="team-count" type="number" min="1" step="1" value="16" required />
-                  </label>
-                  <label>
-                    Anggota per grup
-                    <input id="members-per-team" type="number" min="1" step="1" value="4" required />
-                  </label>
-                  <div class="need-box" id="need-box">
-                    Kebutuhan: <strong>64 orang</strong>
-                  </div>
+                <p class="hint" id="draw-pool-hint"></p>
+                <p class="hint hidden" id="draw-locked-hint">Hasil acak sudah dibuat. Hanya admin yang bisa mengacak ulang.</p>
+                <div class="draw-actions">
+                  <button type="submit" class="primary" id="draw-submit">Acak grup</button>
+                  <button type="button" class="secondary hidden" id="reshuffle">Acak ulang</button>
                 </div>
-                <button type="submit" class="primary" id="draw-submit">Bagi grup secara acak</button>
-                <p class="hint">
-                  Campur mengacak semua peserta tanpa membedakan laki-laki atau
-                  perempuan. Mode laki-laki atau perempuan hanya memakai peserta sesuai
-                  pilihan. PIC dan peserta yang di-exclude tidak masuk grup.
-                </p>
                 <p class="error hidden" id="config-error"></p>
               </form>
             </section>
             <section class="panel hidden" id="result-panel">
               <div class="panel-head">
                 <h2 id="result-title">Hasil pembagian</h2>
-                <div class="actions">
-                  <select id="draw-history" class="hidden" aria-label="Hasil per permainan"></select>
-                  <button type="button" class="secondary" id="reshuffle">Acak ulang</button>
-                </div>
+                <select id="draw-history" class="hidden" aria-label="Hasil per permainan"></select>
               </div>
               <div class="pic-box hidden" id="result-pic-box"></div>
               <p class="result-meta" id="result-meta"></p>
-              <h3 class="section-title">Daftar tim</h3>
-              <div class="teams" id="teams"></div>
-              <section class="bracket hidden" id="bracket"></section>
+              <div id="tourney-board" class="tourney-board"></div>
               <div class="leftover hidden" id="leftover"></div>
             </section>
             <p class="empty-games" id="result-empty">Belum ada hasil. Bagi grup di atas untuk melihat daftar tim dan bagan gugur.</p>

@@ -1,3 +1,5 @@
+import { normalizeGenderMode } from "./teams.js";
+
 export const MAX_GAMES = 80;
 export const MAX_GAME_NAME = 80;
 export const MAX_GAME_DESCRIPTION = 500;
@@ -41,6 +43,7 @@ export function normalizeGame(input, { id, existingIds = [] } = {}) {
   );
   const pic1Id = Number(input?.pic1Id ?? input?.pic1_id ?? 0) || null;
   const pic2Id = Number(input?.pic2Id ?? input?.pic2_id ?? 0) || null;
+  const genderMode = normalizeGenderMode(input?.genderMode ?? input?.gender_mode ?? "campur");
   const labelPrefix = name || "Tim";
   const gameId = id || uniqueGameId(name, existingIds);
 
@@ -87,6 +90,7 @@ export function normalizeGame(input, { id, existingIds = [] } = {}) {
     groupsPerSession,
     pic1Id,
     pic2Id,
+    genderMode,
     labelPrefix,
   };
 }
@@ -107,6 +111,7 @@ export function gameFromRow(row) {
     pic2Cabang: row.pic2_cabang || row.pic2Cabang || "",
     pic1Nomor: row.pic1_nomor || row.pic1Nomor || "",
     pic2Nomor: row.pic2_nomor || row.pic2Nomor || "",
+    genderMode: normalizeGenderMode(row.gender_mode ?? row.genderMode ?? "campur"),
     labelPrefix: row.label_prefix || row.labelPrefix || row.name || "Tim",
     sortOrder: Number(row.sort_order) || 0,
   };
