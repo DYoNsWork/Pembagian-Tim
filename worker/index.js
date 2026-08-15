@@ -1,6 +1,7 @@
 import { divideTeams, normalizeGenderMode } from "../src/teams.js";
 import { chunk, extraDrawIds, groupDrawMembers, normalizeParticipant, personFromRow } from "../src/draws.js";
 import { gameProgressRows, participationCounts } from "../src/dashboard.js";
+import { findDuplicateParticipantKeys, formatParticipantLabel, participantKey } from "../src/csv.js";
 import {
   gameFromRow,
   getGame,
@@ -221,6 +222,14 @@ async function saveParticipants(env, body) {
     );
   }
 
+  const duplicates = findDuplicateParticipantKeys(participants);
+  if (duplicates.length) {
+    throw Object.assign(
+      new Error(`Peserta ganda (nama + cabang sama): ${duplicates.join(", ")}.`),
+      { status: 400 },
+    );
+  }
+
   await env.DB.batch([
     env.DB.prepare("DELETE FROM participants"),
     env.DB.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").bind(
@@ -250,6 +259,13 @@ async function createParticipant(env, body) {
     throw Object.assign(new Error(`Maksimal ${MAX_PARTICIPANTS} peserta.`), { status: 400 });
   }
   const parsed = normalizeParticipant(body);
+  const duplicate = await findParticipantByKey(env, parsed.nama, parsed.cabang);
+  if (duplicate) {
+    throw Object.assign(
+      new Error(`Peserta sudah ada: ${formatParticipantLabel(parsed.nama, parsed.cabang)}.`),
+      { status: 409 },
+    );
+  }
   await env.DB.prepare(
     "INSERT INTO participants (nama, jenis_kelamin, cabang, excluded) VALUES (?, ?, ?, ?)",
   )
@@ -264,6 +280,13 @@ async function updateParticipant(env, id, body) {
     throw Object.assign(new Error("Peserta tidak ditemukan."), { status: 404 });
   }
   const parsed = normalizeParticipant(body);
+  const duplicate = await findParticipantByKey(env, parsed.nama, parsed.cabang, id);
+  if (duplicate) {
+    throw Object.assign(
+      new Error(`Peserta sudah ada: ${formatParticipantLabel(parsed.nama, parsed.cabang)}.`),
+      { status: 409 },
+    );
+  }
   await env.DB.prepare(
     "UPDATE participants SET nama = ?, jenis_kelamin = ?, cabang = ?, excluded = ? WHERE id = ?",
   )
@@ -279,6 +302,16 @@ async function deleteParticipant(env, id) {
   }
   await env.DB.prepare("DELETE FROM participants WHERE id = ?").bind(id).run();
   return listParticipants(env);
+}
+
+async function findParticipantByKey(env, nama, cabang, excludeId = null) {
+  const { results } = await env.DB.prepare(
+    "SELECT id, nama, jenis_kelamin, cabang, excluded FROM participants",
+  ).all();
+  const key = participantKey(nama, cabang);
+  return (results || []).find(
+    (row) => participantKey(row.nama, row.cabang) === key && Number(row.id) !== Number(excludeId),
+  );
 }
 
 async function listDraws(env) {

@@ -1,4 +1,5 @@
 import { parseBracket } from "./bracket.js";
+import { participantKey } from "./csv.js";
 
 export function bracketProgress(bracket) {
   const parsed = typeof bracket === "string" ? parseBracket(bracket) : bracket;
@@ -26,13 +27,14 @@ export function participationCounts(memberRows) {
     const nama = String(row.nama || "").trim();
     if (!nama) continue;
     const cabang = String(row.cabang || "-").trim() || "-";
-    if (!map.has(nama)) {
-      map.set(nama, { nama, cabang, count: 0 });
+    const key = participantKey(nama, cabang);
+    if (!map.has(key)) {
+      map.set(key, { nama, cabang, count: 0 });
     }
-    map.get(nama).count += 1;
+    map.get(key).count += 1;
   }
   return [...map.values()].sort(
-    (a, b) => b.count - a.count || a.nama.localeCompare(b.nama, "id"),
+    (a, b) => b.count - a.count || a.nama.localeCompare(b.nama, "id") || a.cabang.localeCompare(b.cabang, "id"),
   );
 }
 

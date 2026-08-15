@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { listCabangs, normalizeGender, parseParticipantsCsv, sortParticipants, summarizeParticipants } from "./csv.js";
+import {
+  findDuplicateParticipantKeys,
+  formatParticipantLabel,
+  listCabangs,
+  normalizeGender,
+  parseParticipantsCsv,
+  participantKey,
+  sortParticipants,
+  summarizeParticipants,
+} from "./csv.js";
 
 const SAMPLE = `Andi,L,Jakarta,01
 Siti,P,Bandung,02
@@ -53,6 +62,23 @@ describe("parseParticipantsCsv", () => {
 
   it("gagal jika file kosong", () => {
     expect(() => parseParticipantsCsv(" \n ")).toThrow(/kosong/i);
+  });
+});
+
+describe("participant identity", () => {
+  it("membedakan nama sama di cabang berbeda", () => {
+    expect(participantKey("Putri", "Botania")).not.toBe(participantKey("Putri", "Prima"));
+    expect(formatParticipantLabel("Putri", "Botania")).toBe("Putri · Botania");
+  });
+
+  it("mendeteksi duplikat nama + cabang", () => {
+    expect(
+      findDuplicateParticipantKeys([
+        { nama: "Putri", cabang: "Botania" },
+        { nama: "Putri", cabang: "Prima" },
+        { nama: "Putri", cabang: "Botania" },
+      ]),
+    ).toEqual(["Putri · Botania"]);
   });
 });
 

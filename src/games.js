@@ -115,11 +115,10 @@ export function gameFromRow(row) {
   };
 }
 
+import { formatParticipantLabel } from "./csv.js";
+
 export function formatPicLine(name, cabang) {
-  const who = String(name || "").trim();
-  if (!who) return "";
-  const branch = String(cabang || "").trim();
-  return branch && branch !== "-" ? `${who} · ${branch}` : who;
+  return formatParticipantLabel(name, cabang);
 }
 
 export function withPicDetails(game, peopleById = new Map()) {

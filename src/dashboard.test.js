@@ -32,6 +32,19 @@ describe("participationCounts", () => {
       { nama: "Siti", cabang: "Bandung", count: 1 },
     ]);
   });
+
+  it("memisahkan nama sama di cabang berbeda", () => {
+    expect(
+      participationCounts([
+        { team_number: 1, nama: "Putri", cabang: "Botania" },
+        { team_number: 1, nama: "Putri", cabang: "Prima" },
+        { team_number: 2, nama: "Putri", cabang: "Botania" },
+      ]),
+    ).toEqual([
+      { nama: "Putri", cabang: "Botania", count: 2 },
+      { nama: "Putri", cabang: "Prima", count: 1 },
+    ]);
+  });
 });
 
 describe("gameProgressRows", () => {

@@ -1,4 +1,4 @@
-import { listCabangs, parseParticipantsCsv, sortParticipants, summarizeParticipants } from "./csv.js";
+import { formatParticipantLabel, listCabangs, parseParticipantsCsv, sortParticipants, summarizeParticipants } from "./csv.js";
 import { eligibleParticipants, genderModeLabel, normalizeGenderMode } from "./teams.js";
 import { formatPicLine, getGame } from "./games.js";
 import { api } from "./api.js";
@@ -301,8 +301,7 @@ function renderDashboard(data) {
         <div class="dash-person">
           <span class="dash-rank">${index + 1}</span>
           <div>
-            <strong>${escapeHtml(person.nama)}</strong>
-            <small>${escapeHtml(person.cabang)}</small>
+            <strong>${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</strong>
           </div>
           <span class="dash-count">${person.count} permainan</span>
         </div>`,
@@ -441,7 +440,7 @@ function fillPicPair(cabangSelect, personSelect, cabang, personId) {
     `<option value="">Pilih peserta</option>`,
     ...people.map(
       (person) =>
-        `<option value="${person.id}">${escapeHtml(person.nama)}</option>`,
+        `<option value="${person.id}">${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</option>`,
     ),
   ].join("");
   personSelect.value =
@@ -476,9 +475,8 @@ function renderParticipants(list) {
       (person, index) => `
         <tr class="${person.excluded ? "is-excluded" : ""}">
           <td>${index + 1}</td>
-          <td>${escapeHtml(person.nama)}</td>
+          <td>${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</td>
           <td>${genderBadge(person.jenisKelamin)}</td>
-          <td>${escapeHtml(person.cabang)}</td>
           <td>${person.excluded ? "Tidak ikut" : "Ikut"}</td>
           <td>
             <button type="button" class="text-btn" data-person-action="edit" data-person-id="${person.id}">Ubah</button>
@@ -495,8 +493,8 @@ function renderParticipants(list) {
       (person) => `
         <article class="person-card ${person.excluded ? "is-excluded" : ""}">
           <div>
-            <strong>${escapeHtml(person.nama)}</strong>
-            <span class="user-meta">${genderBadge(person.jenisKelamin)} · ${escapeHtml(person.cabang)}</span>
+            <strong>${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</strong>
+            <span class="user-meta">${genderBadge(person.jenisKelamin)}</span>
             <span class="user-meta">${person.excluded ? "Tidak ikut permainan" : "Ikut undian"}</span>
           </div>
           <div class="game-card-actions">
@@ -616,7 +614,11 @@ async function toggleExclude(id) {
       body: JSON.stringify({ ...person, excluded: !person.excluded }),
     });
     showParticipantData(saved.participants, "Cloudflare D1");
-    setCloudStatus(person.excluded ? `${person.nama} diikutkan lagi` : `${person.nama} di-exclude dari permainan`);
+    setCloudStatus(
+      person.excluded
+        ? `${formatParticipantLabel(person.nama, person.cabang)} diikutkan lagi`
+        : `${formatParticipantLabel(person.nama, person.cabang)} di-exclude dari permainan`,
+    );
   } catch (error) {
     setCloudStatus(error.message, "warn");
   }
@@ -624,11 +626,11 @@ async function toggleExclude(id) {
 
 async function removeParticipant(id) {
   const person = participants.find((item) => String(item.id) === String(id));
-  if (!person || !confirm(`Hapus peserta “${person.nama}”?`)) return;
+  if (!person || !confirm(`Hapus peserta “${formatParticipantLabel(person.nama, person.cabang)}”?`)) return;
   try {
     const saved = await api(`/api/participants/${id}`, { method: "DELETE" });
     showParticipantData(saved.participants, "Cloudflare D1");
-    setCloudStatus(`Peserta ${person.nama} dihapus`);
+    setCloudStatus(`Peserta ${formatParticipantLabel(person.nama, person.cabang)} dihapus`);
   } catch (error) {
     setCloudStatus(error.message, "warn");
   }
@@ -648,7 +650,7 @@ function renderResult(result) {
   if (result.leftover.length) {
     leftoverEl.classList.remove("hidden");
     leftoverEl.innerHTML = `<h3>Cadangan (${result.leftover.length})</h3><p>${result.leftover
-      .map((person) => `${escapeHtml(person.nama)} (${escapeHtml(person.cabang)})`)
+      .map((person) => escapeHtml(formatParticipantLabel(person.nama, person.cabang)))
       .join(", ")}</p>`;
   } else {
     leftoverEl.classList.add("hidden");
@@ -685,7 +687,7 @@ function renderSessionTeamCard(team, match) {
         ${team.members
           .map(
             (member) =>
-              `<li><span>${escapeHtml(member.nama)}</span><small>${genderBadge(member.jenisKelamin)} · ${escapeHtml(member.cabang)}</small></li>`,
+              `<li><span>${escapeHtml(formatParticipantLabel(member.nama, member.cabang))}</span><small>${genderBadge(member.jenisKelamin)}</small></li>`,
           )
           .join("")}
       </ol>
@@ -706,7 +708,7 @@ function renderTourneyBoard(result) {
               ${team.members
                 .map(
                   (member) =>
-                    `<li><span>${escapeHtml(member.nama)}</span><small>${genderBadge(member.jenisKelamin)} · ${escapeHtml(member.cabang)}</small></li>`,
+                    `<li><span>${escapeHtml(formatParticipantLabel(member.nama, member.cabang))}</span><small>${genderBadge(member.jenisKelamin)}</small></li>`,
                 )
                 .join("")}
             </ol>
