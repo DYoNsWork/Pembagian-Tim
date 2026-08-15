@@ -1,10 +1,26 @@
+import { normalizeGender } from "./csv.js";
+
 export function personFromRow(row) {
   return {
     id: row.id,
     nama: row.nama,
     jenisKelamin: row.jenis_kelamin,
     cabang: row.cabang,
+    nomor: row.nomor || "",
+    excluded: Boolean(Number(row.excluded)),
   };
+}
+
+export function normalizeParticipant(input) {
+  const nama = String(input?.nama || "").trim();
+  const jenisKelamin = normalizeGender(input?.jenisKelamin || input?.jenis_kelamin || "");
+  const cabang = String(input?.cabang || "").trim() || "-";
+  const nomor = String(input?.nomor || "").trim().slice(0, 40);
+  const excluded = Boolean(input?.excluded);
+  if (!nama) {
+    throw Object.assign(new Error("Nama peserta wajib diisi."), { status: 400 });
+  }
+  return { nama, jenisKelamin, cabang, nomor, excluded };
 }
 
 export function groupDrawMembers(rows) {

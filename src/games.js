@@ -39,6 +39,8 @@ export function normalizeGame(input, { id, existingIds = [] } = {}) {
   const groupsPerSession = Number(
     input?.groupsPerSession ?? input?.groups_per_session ?? input?.grupPerSesi ?? 2,
   );
+  const pic1Id = Number(input?.pic1Id ?? input?.pic1_id ?? 0) || null;
+  const pic2Id = Number(input?.pic2Id ?? input?.pic2_id ?? 0) || null;
   const labelPrefix = name || "Tim";
   const gameId = id || uniqueGameId(name, existingIds);
 
@@ -69,6 +71,12 @@ export function normalizeGame(input, { id, existingIds = [] } = {}) {
       { status: 400 },
     );
   }
+  if (!pic1Id || !pic2Id) {
+    throw Object.assign(new Error("Pilih 2 PIC untuk permainan ini."), { status: 400 });
+  }
+  if (pic1Id === pic2Id) {
+    throw Object.assign(new Error("PIC 1 dan PIC 2 harus orang yang berbeda."), { status: 400 });
+  }
 
   return {
     id: gameId,
@@ -77,6 +85,8 @@ export function normalizeGame(input, { id, existingIds = [] } = {}) {
     teamCount,
     members,
     groupsPerSession,
+    pic1Id,
+    pic2Id,
     labelPrefix,
   };
 }
@@ -89,6 +99,10 @@ export function gameFromRow(row) {
     teamCount: Number(row.team_count ?? row.teamCount) || 1,
     members: Number(row.members),
     groupsPerSession: Number(row.groups_per_session ?? row.groupsPerSession) || 2,
+    pic1Id: Number(row.pic1_id ?? row.pic1Id) || null,
+    pic2Id: Number(row.pic2_id ?? row.pic2Id) || null,
+    pic1Name: row.pic1_name || row.pic1Name || "",
+    pic2Name: row.pic2_name || row.pic2Name || "",
     labelPrefix: row.label_prefix || row.labelPrefix || row.name || "Tim",
     sortOrder: Number(row.sort_order) || 0,
   };

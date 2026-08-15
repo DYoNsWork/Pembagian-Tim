@@ -23,6 +23,8 @@ html,
 body {
   margin: 0;
   padding: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -50,6 +52,7 @@ body {
   display: grid;
   grid-template-columns: 268px minmax(0, 1fr);
   min-height: 100vh;
+  min-width: 0;
 }
 
 .sidebar {
@@ -189,9 +192,10 @@ body {
 }
 
 .page {
-  width: min(1120px, calc(100% - 40px));
+  width: min(1120px, 100%);
   margin: 0 auto;
-  padding: 28px 0 64px;
+  padding: 28px 20px 64px;
+  min-width: 0;
 }
 
 .topbar {
@@ -385,6 +389,61 @@ code {
   border-radius: 6px;
 }
 
+.participant-editor,
+.person-cards {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.participant-editor {
+  padding: 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 18px;
+}
+
+.participant-editor.hidden,
+.person-cards.hidden {
+  display: none;
+}
+
+.participant-editor label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.person-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  min-width: 0;
+}
+
+.person-card strong,
+.game-card-name,
+.team-card strong,
+.user-card strong {
+  overflow-wrap: anywhere;
+}
+
+.person-card.is-excluded,
+tr.is-excluded {
+  opacity: 0.62;
+}
+
+.person-cards {
+  display: none;
+}
+
+body:not(.can-edit-peserta) [data-person-action] {
+  display: none !important;
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -541,6 +600,7 @@ tbody tr:hover {
 
 .game-card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -1167,6 +1227,11 @@ footer {
 }
 
 @media (max-width: 860px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   .app {
     grid-template-columns: 1fr;
   }
@@ -1220,25 +1285,51 @@ footer {
   }
 
   .page {
-    width: calc(100% - 20px);
-    padding: 16px 0 calc(96px + env(safe-area-inset-bottom));
+    width: 100%;
+    padding: 12px 12px calc(88px + env(safe-area-inset-bottom));
   }
 
   h1 {
-    font-size: 1.55rem;
+    font-size: 1.35rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .topbar {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .topbar-user {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+
+  .user-chip {
+    max-width: 42vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    padding: 6px 8px;
   }
 
   .panel {
-    padding: 16px;
-    border-radius: 18px;
+    padding: 14px;
+    border-radius: 16px;
   }
 
   .dropzone {
     flex-direction: column;
     text-align: center;
+    padding: 14px;
   }
 
-  .stats,
+  .stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .config-grid,
   .game-editor,
   .gender-modes,
@@ -1250,20 +1341,38 @@ footer {
   .secondary,
   select,
   .game-select-wide select,
-  #draw-history {
+  #draw-history,
+  input[type="text"],
+  input[type="number"],
+  input[type="password"],
+  textarea {
     width: 100%;
     max-width: none;
+    font-size: 16px;
   }
 
   .panel-head,
   .actions,
-  .user-card {
+  .user-card,
+  .person-card {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .person-cards {
+    display: grid;
+  }
+
+  #participant-table-wrap {
+    display: none;
+  }
+
   .table-wrap {
     font-size: 0.85rem;
+  }
+
+  .bracket-board {
+    margin: 0 -6px;
   }
 
   .bracket-rounds {
@@ -1271,7 +1380,41 @@ footer {
   }
 
   .bracket-round {
-    min-width: 200px;
+    min-width: 168px;
+    padding-right: 12px;
+  }
+
+  .bottom-nav-item {
+    min-width: 0;
+    font-size: 0.62rem;
+    padding: 4px 2px;
+  }
+
+  .bottom-nav-item svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .auth-card {
+    padding: 18px 16px;
+  }
+
+  .auth-card h1 {
+    font-size: 1.45rem;
+  }
+}
+
+@media (max-width: 400px) {
+  h1 {
+    font-size: 1.2rem;
+  }
+
+  .bottom-nav-item span {
+    font-size: 0.58rem;
+  }
+
+  .page {
+    padding-inline: 10px;
   }
 }
 

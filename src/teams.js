@@ -36,9 +36,18 @@ export function filterByGender(participants, genderMode) {
   return participants;
 }
 
+export function eligibleParticipants(participants, { genderMode = "campur", picIds = [] } = {}) {
+  const pics = new Set(
+    (Array.isArray(picIds) ? picIds : []).filter((id) => id != null && id !== "").map(Number),
+  );
+  return filterByGender(participants, genderMode).filter(
+    (person) => !person.excluded && !pics.has(Number(person.id)),
+  );
+}
+
 export function divideTeams(
   participants,
-  { teamCount, membersPerTeam, gameName = "Tim", genderMode = "campur" },
+  { teamCount, membersPerTeam, gameName = "Tim", genderMode = "campur", picIds = [] },
   random = Math.random,
 ) {
   const teamsWanted = Number(teamCount);
@@ -52,7 +61,7 @@ export function divideTeams(
     throw new Error("Anggota per tim harus bilangan bulat minimal 1.");
   }
 
-  const pool = filterByGender(participants, mode);
+  const pool = eligibleParticipants(participants, { genderMode: mode, picIds });
   const needed = teamsWanted * size;
   if (pool.length < needed) {
     const who =
