@@ -13,6 +13,7 @@ describe("RBAC", () => {
   it("admin selalu punya semua hak", () => {
     expect(normalizeRights([], "admin")).toEqual([
       "peserta",
+      "daftar",
       "permainan",
       "pembagian",
       "hasil",
@@ -48,6 +49,11 @@ describe("RBAC", () => {
       rights: ["peserta", "hasil"],
     });
   });
+
+  it("panitia punya hak daftar peserta", () => {
+    const rights = rightsForRole("panitia");
+    expect(rights).toContain("daftar");
+  });
 });
 
 describe("validateUserInput", () => {
@@ -74,7 +80,11 @@ describe("validateUserInput", () => {
       role: "panitia",
     });
     expect(parsed.username).toBe("panitia_1");
-    expect(parsed.rights).toEqual(["peserta", "permainan", "pembagian", "hasil"]);
+    expect(parsed.rights).toEqual(["peserta", "daftar", "permainan", "pembagian", "hasil"]);
+  });
+
+  it("pengguna daftar-only dibuka di menu daftar", () => {
+    expect(firstAllowedView({ role: "kustom", rights: ["daftar"] })).toBe("daftar");
   });
 });
 

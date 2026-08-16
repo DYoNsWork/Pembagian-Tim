@@ -139,7 +139,7 @@ function can(right) {
 
 function canOpenView(name) {
   if (name === "dashboard") return can("pembagian") || can("hasil") || can("permainan");
-  if (name === "daftar") return can("peserta") || can("pembagian") || can("hasil") || can("permainan");
+  if (name === "daftar") return can("daftar");
   const view = viewForRight(name);
   if (view === "pembagian") return can("pembagian") || can("hasil");
   return can(view);
@@ -528,25 +528,22 @@ function fillPicSelects(pic1Id, pic2Id) {
 function renderParticipantDirectory(list) {
   const sorted = sortParticipants(list, directorySort);
   if (directoryCount) {
-    directoryCount.textContent = sorted.length
-      ? `${sorted.length} peserta`
-      : "Belum ada peserta. Unggah data di menu Peserta.";
+    directoryCount.textContent = sorted.length ? `${sorted.length} peserta` : "Belum ada peserta.";
   }
   if (!directoryRows) return;
   directoryRows.innerHTML = sorted.length
     ? sorted
         .map(
           (person, index) => `
-        <tr class="${person.excluded ? "is-excluded" : ""}">
+        <tr>
           <td>${index + 1}</td>
           <td>${escapeHtml(person.nama)}</td>
           <td>${escapeHtml(person.cabang)}</td>
           <td>${genderBadge(person.jenisKelamin)}</td>
-          <td>${person.excluded ? "Tidak ikut" : "Ikut"}</td>
         </tr>`,
         )
         .join("")
-    : `<tr><td colspan="5" class="empty-cell">Belum ada peserta.</td></tr>`;
+    : `<tr><td colspan="4" class="empty-cell">Belum ada peserta.</td></tr>`;
 }
 
 function renderParticipants(list) {
@@ -983,7 +980,7 @@ async function loadFromCloud() {
     if (can("permainan") || can("pembagian") || can("hasil")) {
       await loadGamesFromCloud();
     }
-    if (can("peserta") || can("permainan") || can("pembagian") || can("hasil")) {
+    if (can("peserta") || can("permainan") || can("pembagian") || can("daftar")) {
       const data = await api("/api/participants");
       if (data.participants.length) {
         showParticipantData(data.participants, data.filename || "Cloudflare D1");

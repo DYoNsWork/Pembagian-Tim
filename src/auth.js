@@ -1,5 +1,6 @@
 export const RIGHTS = [
   { id: "peserta", label: "Peserta", description: "Lihat dan unggah data peserta" },
+  { id: "daftar", label: "Daftar peserta", description: "Lihat tabel seluruh peserta" },
   { id: "permainan", label: "Permainan", description: "Kelola jenis permainan" },
   { id: "pembagian", label: "Pembagian", description: "Bagi grup secara acak" },
   { id: "hasil", label: "Hasil", description: "Lihat grup, bagan, dan tentukan pemenang" },
@@ -8,7 +9,7 @@ export const RIGHTS = [
 
 export const ROLE_PRESETS = {
   admin: RIGHTS.map((right) => right.id),
-  panitia: ["peserta", "permainan", "pembagian", "hasil"],
+  panitia: ["peserta", "daftar", "permainan", "pembagian", "hasil"],
   penonton: ["hasil"],
   kustom: [],
 };
@@ -65,6 +66,7 @@ export function firstAllowedView(user) {
   if (hasRight(user, "pembagian") || hasRight(user, "hasil") || hasRight(user, "permainan")) {
     return "dashboard";
   }
+  if (hasRight(user, "daftar")) return "daftar";
   const right = RIGHTS.map((item) => item.id).find((id) => hasRight(user, id));
   return right ? viewForRight(right) : "";
 }

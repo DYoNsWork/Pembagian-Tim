@@ -91,7 +91,7 @@ async function handleApi(request, env, url) {
   }
 
   if (path === "/api/participants" && request.method === "GET") {
-    requireAnyRight(user, ["peserta", "permainan", "pembagian", "hasil"]);
+    requireAnyRight(user, ["peserta", "permainan", "pembagian", "daftar"]);
     return json(await listParticipants(env));
   }
 
