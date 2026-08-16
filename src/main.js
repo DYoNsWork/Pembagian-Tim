@@ -36,6 +36,7 @@ const drawLockedHint = document.querySelector("#draw-locked-hint");
 const drawGameSelect = document.querySelector("#draw-game");
 const drawSubmit = document.querySelector("#draw-submit");
 const reshuffleBtn = document.querySelector("#reshuffle");
+const resetDrawBtn = document.querySelector("#reset-draw");
 const gameGrid = document.querySelector("#game-grid");
 const gamesEmpty = document.querySelector("#games-empty");
 const gameEditor = document.querySelector("#game-editor");
@@ -346,6 +347,7 @@ function updateDrawPanel() {
   drawSubmit.classList.toggle("hidden", locked);
   drawLockedHint.classList.toggle("hidden", !locked);
   reshuffleBtn.classList.toggle("hidden", !locked || !isAdmin());
+  resetDrawBtn.classList.toggle("hidden", !locked || !isAdmin());
   drawSubmit.disabled = !game || poolForGame(game).length < (game?.teamCount || 0) * (game?.members || 0);
 }
 
@@ -1214,6 +1216,39 @@ configForm.addEventListener("submit", (event) => {
 reshuffleBtn.addEventListener("click", () => {
   runDraw({ replace: true });
 });
+
+resetDrawBtn.addEventListener("click", () => {
+  resetDrawDivision();
+});
+
+async function resetDrawDivision() {
+  hide(configError);
+  const game = selectedGame();
+  const existing = drawForGame(selectedGameId);
+  if (!game || !existing || !isAdmin()) return;
+  if (
+    !confirm(
+      `Reset pembagian “${game.name}”?\n\nSemua tim, bagan gugur, dan progress akan dihapus. Anda bisa mengacak ulang dari awal.`,
+    )
+  ) {
+    return;
+  }
+  try {
+    await api(`/api/draws/${existing.id}`, { method: "DELETE" });
+    lastResult = null;
+    hide(resultPanel);
+    show(resultEmpty);
+    tourneyBoard.innerHTML = "";
+    await refreshDrawHistory();
+    updateDrawPanel();
+    setCloudStatus(`Pembagian ${game.name} direset`, "muted");
+    if (canOpenView("dashboard")) await loadDashboard();
+  } catch (error) {
+    configError.textContent = error.message;
+    show(configError);
+    setCloudStatus(error.message, "warn");
+  }
+}
 
 document.querySelector("#add-participant").addEventListener("click", () => openParticipantEditor());
 document.querySelector("#participant-cancel").addEventListener("click", closeParticipantEditor);

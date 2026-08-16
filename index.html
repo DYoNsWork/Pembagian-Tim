@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0b1210" />
+    <meta name="theme-color" content="#0b1020" />
     <title>Pembagian Grup Permainan</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -89,7 +89,6 @@
           <p class="user-chip" id="sidebar-user">—</p>
           <button type="button" class="secondary logout-btn">Keluar</button>
         </div>
-        <p class="cloud-status" id="cloud-status">Menghubungkan ke Cloudflare D1…</p>
         <button type="button" class="danger hidden" id="clear-cloud">Hapus data cloud</button>
       </aside>
       <div class="nav-backdrop hidden" id="nav-backdrop"></div>
@@ -322,10 +321,11 @@
                   <div id="draw-info" class="draw-info hidden"></div>
                 </div>
                 <p class="hint" id="draw-pool-hint"></p>
-                <p class="hint hidden" id="draw-locked-hint">Hasil acak sudah dibuat. Hanya admin yang bisa mengacak ulang.</p>
+                <p class="hint hidden" id="draw-locked-hint">Hasil acak sudah dibuat. Admin bisa acak ulang atau reset pembagian.</p>
                 <div class="draw-actions">
                   <button type="submit" class="primary" id="draw-submit">Acak grup</button>
                   <button type="button" class="secondary hidden" id="reshuffle">Acak ulang</button>
+                  <button type="button" class="danger hidden" id="reset-draw">Reset pembagian</button>
                 </div>
                 <p class="error hidden" id="config-error"></p>
               </form>
@@ -412,6 +412,9 @@
           <span>User</span>
         </button>
       </nav>
+      <div class="status-bar" id="status-bar">
+        <p class="cloud-status" id="cloud-status">Menghubungkan ke Cloudflare D1…</p>
+      </div>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

@@ -19,6 +19,7 @@ import {
   handleAuth,
   listUsers,
   requireAnyRight,
+  requireAdmin,
   requireRight,
   updateUser,
 } from "./auth.js";
@@ -180,6 +181,11 @@ async function handleApi(request, env, url) {
     requireRight(user, "hasil");
     const body = await readJson(request);
     return json(await updateDrawBracket(env, Number(drawMatch[1]), body));
+  }
+
+  if (drawMatch && request.method === "DELETE") {
+    requireAdmin(user);
+    return json(await resetDraw(env, Number(drawMatch[1])));
   }
 
   return json({ error: "Endpoint tidak ditemukan." }, 404);
@@ -624,6 +630,19 @@ async function getDashboard(env) {
   return {
     games: gameProgressRows(games, drawsByGame),
     topParticipants: participantLeaderboard(memberRows, drawSnapshots, 10),
+  };
+}
+
+async function resetDraw(env, id) {
+  const draw = await env.DB.prepare("SELECT id, game_name FROM draws WHERE id = ?").bind(id).first();
+  if (!draw) {
+    throw Object.assign(new Error("Hasil undian tidak ditemukan."), { status: 404 });
+  }
+  await deleteDraw(env, id);
+  return {
+    ok: true,
+    gameName: draw.game_name || "Permainan",
+    ...(await listDraws(env)),
   };
 }
 
