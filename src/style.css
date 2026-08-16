@@ -516,6 +516,21 @@ body:not(.can-edit-peserta) [data-person-action] {
   border-radius: 14px;
 }
 
+.directory-table-wrap {
+  max-height: min(70vh, 640px);
+}
+
+.directory-table th {
+  background: #1a243c;
+  color: var(--primary);
+}
+
+.empty-cell {
+  text-align: center;
+  color: var(--muted);
+  padding: 24px 12px !important;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -2026,6 +2041,17 @@ footer {
 
   #participant-table-wrap {
     display: none;
+  }
+
+  .directory-table-wrap {
+    display: block;
+    max-height: none;
+  }
+
+  .directory-table-wrap th,
+  .directory-table-wrap td {
+    padding: 8px 10px;
+    font-size: 0.82rem;
   }
 
   .table-wrap {

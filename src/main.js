@@ -13,6 +13,7 @@ import {
 
 const VIEWS = {
   peserta: { eyebrow: "Peserta", title: "Data peserta" },
+  daftar: { eyebrow: "Daftar", title: "Seluruh peserta" },
   dashboard: { eyebrow: "Dashboard", title: "Beranda" },
   permainan: { eyebrow: "Permainan", title: "Jenis permainan" },
   pembagian: { eyebrow: "Pembagian", title: "Bagi grup & hasil" },
@@ -30,6 +31,9 @@ const drawEmpty = document.querySelector("#draw-empty");
 const statsEl = document.querySelector("#stats");
 const rowsEl = document.querySelector("#participant-rows");
 const participantSortSelect = document.querySelector("#participant-sort");
+const directorySortSelect = document.querySelector("#directory-sort");
+const directoryRows = document.querySelector("#directory-rows");
+const directoryCount = document.querySelector("#directory-count");
 const drawInfo = document.querySelector("#draw-info");
 const drawPoolHint = document.querySelector("#draw-pool-hint");
 const drawLockedHint = document.querySelector("#draw-locked-hint");
@@ -83,6 +87,7 @@ let draws = [];
 let currentUser = null;
 let users = [];
 let participantSort = "nama-asc";
+let directorySort = "nama-asc";
 
 function show(el) {
   el.classList.remove("hidden");
@@ -134,6 +139,7 @@ function can(right) {
 
 function canOpenView(name) {
   if (name === "dashboard") return can("pembagian") || can("hasil") || can("permainan");
+  if (name === "daftar") return can("peserta") || can("pembagian") || can("hasil") || can("permainan");
   const view = viewForRight(name);
   if (view === "pembagian") return can("pembagian") || can("hasil");
   return can(view);
@@ -165,6 +171,7 @@ function showView(name) {
     loadDrawForSelectedGame();
   }
   if (view === "dashboard") loadDashboard();
+  if (view === "daftar") renderParticipantDirectory(participants);
   if (view === "permainan" && !games.length && can("permainan")) openGameEditor();
   if (view === "pengguna") loadUsers();
 }
@@ -518,6 +525,30 @@ function fillPicSelects(pic1Id, pic2Id) {
   fillPicPair(gamePic2Cabang, gamePic2Input, pic2?.cabang, pic2Id);
 }
 
+function renderParticipantDirectory(list) {
+  const sorted = sortParticipants(list, directorySort);
+  if (directoryCount) {
+    directoryCount.textContent = sorted.length
+      ? `${sorted.length} peserta`
+      : "Belum ada peserta. Unggah data di menu Peserta.";
+  }
+  if (!directoryRows) return;
+  directoryRows.innerHTML = sorted.length
+    ? sorted
+        .map(
+          (person, index) => `
+        <tr class="${person.excluded ? "is-excluded" : ""}">
+          <td>${index + 1}</td>
+          <td>${escapeHtml(person.nama)}</td>
+          <td>${escapeHtml(person.cabang)}</td>
+          <td>${genderBadge(person.jenisKelamin)}</td>
+          <td>${person.excluded ? "Tidak ikut" : "Ikut"}</td>
+        </tr>`,
+        )
+        .join("")
+    : `<tr><td colspan="5" class="empty-cell">Belum ada peserta.</td></tr>`;
+}
+
 function renderParticipants(list) {
   const sorted = sortParticipants(list, participantSort);
   const summary = summarizeParticipants(list);
@@ -591,6 +622,7 @@ function showParticipantData(list, name, { saved = true } = {}) {
   }.`;
   fileName.textContent = name || "Cloudflare D1";
   renderParticipants(list);
+  renderParticipantDirectory(list);
   applyGame(selectedGameId);
   show(dataPanel);
   if (list.length) show(clearBtn);
@@ -951,7 +983,7 @@ async function loadFromCloud() {
     if (can("permainan") || can("pembagian") || can("hasil")) {
       await loadGamesFromCloud();
     }
-    if (can("peserta") || can("permainan") || can("pembagian")) {
+    if (can("peserta") || can("permainan") || can("pembagian") || can("hasil")) {
       const data = await api("/api/participants");
       if (data.participants.length) {
         showParticipantData(data.participants, data.filename || "Cloudflare D1");
@@ -1206,6 +1238,11 @@ drawGameSelect.addEventListener("change", () => {
 participantSortSelect.addEventListener("change", () => {
   participantSort = participantSortSelect.value;
   renderParticipants(participants);
+});
+
+directorySortSelect?.addEventListener("change", () => {
+  directorySort = directorySortSelect.value;
+  renderParticipantDirectory(participants);
 });
 
 configForm.addEventListener("submit", (event) => {

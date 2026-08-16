@@ -68,20 +68,24 @@
             <span class="nav-index">01</span>
             <span>Dashboard</span>
           </button>
+          <button type="button" class="nav-item" data-view="daftar">
+            <span class="nav-index">03</span>
+            <span>Daftar</span>
+          </button>
           <button type="button" class="nav-item" data-view="peserta">
-            <span class="nav-index">02</span>
+            <span class="nav-index">04</span>
             <span>Peserta</span>
           </button>
           <button type="button" class="nav-item" data-view="permainan">
-            <span class="nav-index">03</span>
+            <span class="nav-index">05</span>
             <span>Permainan</span>
           </button>
           <button type="button" class="nav-item" data-view="pembagian">
-            <span class="nav-index">04</span>
+            <span class="nav-index">06</span>
             <span>Pembagian</span>
           </button>
           <button type="button" class="nav-item hidden" data-view="pengguna">
-            <span class="nav-index">05</span>
+            <span class="nav-index">07</span>
             <span>Pengguna</span>
           </button>
         </nav>
@@ -183,6 +187,38 @@
                     </tr>
                   </thead>
                   <tbody id="participant-rows"></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+
+          <section class="view hidden" id="view-daftar">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Daftar peserta</h2>
+                <label class="sort-label">
+                  Urutkan
+                  <select id="directory-sort">
+                    <option value="nama-asc">Nama A–Z</option>
+                    <option value="nama-desc">Nama Z–A</option>
+                    <option value="cabang">Cabang</option>
+                    <option value="status">Status</option>
+                  </select>
+                </label>
+              </div>
+              <p class="hint" id="directory-count">0 peserta</p>
+              <div class="table-wrap directory-table-wrap">
+                <table class="directory-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Nama</th>
+                      <th>Cabang</th>
+                      <th>Jenis kelamin</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="directory-rows"></tbody>
                 </table>
               </div>
             </section>
@@ -394,6 +430,10 @@
         <button type="button" class="bottom-nav-item is-active" data-view="dashboard">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 4h6v7H5Zm8 0h6v4h-6Zm0 6h6v10h-6ZM5 13h6v7H5Z"/></svg>
           <span>Board</span>
+        </button>
+        <button type="button" class="bottom-nav-item" data-view="daftar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 6h16v2H4V6Zm0 5h16v2H4v-2Zm0 5h16v2H4v-2Z"/></svg>
+          <span>Daftar</span>
         </button>
         <button type="button" class="bottom-nav-item" data-view="peserta">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5Z"/></svg>
