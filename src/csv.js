@@ -49,6 +49,33 @@ function parseCsvLine(line, delimiter) {
   return cells;
 }
 
+export function participantKey(nama, cabang) {
+  const name = String(nama ?? "").trim().toLowerCase();
+  const branch = (String(cabang ?? "").trim() || "-").toLowerCase();
+  return `${name}\u0001${branch}`;
+}
+
+export function formatParticipantLabel(nama, cabang) {
+  const who = String(nama ?? "").trim();
+  if (!who) return "";
+  const branch = String(cabang ?? "").trim();
+  return branch && branch !== "-" ? `${who} · ${branch}` : who;
+}
+
+export function findDuplicateParticipantKeys(participants) {
+  const seen = new Map();
+  const duplicates = [];
+  for (const person of participants || []) {
+    const key = participantKey(person.nama, person.cabang);
+    if (seen.has(key)) {
+      duplicates.push(formatParticipantLabel(person.nama, person.cabang));
+    } else {
+      seen.set(key, person);
+    }
+  }
+  return duplicates;
+}
+
 export function parseParticipantsCsv(text) {
   const source = String(text ?? "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const lines = source
@@ -77,7 +104,6 @@ export function parseParticipantsCsv(text) {
       nama,
       jenisKelamin: normalizeGender(cells[1] || ""),
       cabang: (cells[2] || "").trim() || "-",
-      nomor: (cells[3] || "").trim(),
       excluded: false,
     });
   }
@@ -87,6 +113,34 @@ export function parseParticipantsCsv(text) {
   }
 
   return { participants, errors, delimiter };
+}
+
+export function listCabangs(participants) {
+  return [
+    ...new Set(
+      (participants || []).map((person) => String(person.cabang || "").trim() || "-"),
+    ),
+  ].sort((a, b) => a.localeCompare(b, "id"));
+}
+
+export function sortParticipants(list, sortBy = "nama-asc") {
+  const sorted = [...(list || [])];
+  sorted.sort((a, b) => {
+    switch (sortBy) {
+      case "nama-desc":
+        return b.nama.localeCompare(a.nama, "id") || b.cabang.localeCompare(a.cabang, "id");
+      case "cabang":
+        return a.cabang.localeCompare(b.cabang, "id") || a.nama.localeCompare(b.nama, "id");
+      case "status":
+        if (Boolean(a.excluded) !== Boolean(b.excluded)) {
+          return a.excluded ? 1 : -1;
+        }
+        return a.nama.localeCompare(b.nama, "id") || a.cabang.localeCompare(b.cabang, "id");
+      default:
+        return a.nama.localeCompare(b.nama, "id") || a.cabang.localeCompare(b.cabang, "id");
+    }
+  });
+  return sorted;
 }
 
 export function summarizeParticipants(participants) {

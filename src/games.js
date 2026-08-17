@@ -1,3 +1,5 @@
+import { normalizeGenderMode } from "./teams.js";
+
 export const MAX_GAMES = 80;
 export const MAX_GAME_NAME = 80;
 export const MAX_GAME_DESCRIPTION = 500;
@@ -41,6 +43,7 @@ export function normalizeGame(input, { id, existingIds = [] } = {}) {
   );
   const pic1Id = Number(input?.pic1Id ?? input?.pic1_id ?? 0) || null;
   const pic2Id = Number(input?.pic2Id ?? input?.pic2_id ?? 0) || null;
+  const genderMode = normalizeGenderMode(input?.genderMode ?? input?.gender_mode ?? "campur");
   const labelPrefix = name || "Tim";
   const gameId = id || uniqueGameId(name, existingIds);
 
@@ -87,6 +90,7 @@ export function normalizeGame(input, { id, existingIds = [] } = {}) {
     groupsPerSession,
     pic1Id,
     pic2Id,
+    genderMode,
     labelPrefix,
   };
 }
@@ -103,7 +107,28 @@ export function gameFromRow(row) {
     pic2Id: Number(row.pic2_id ?? row.pic2Id) || null,
     pic1Name: row.pic1_name || row.pic1Name || "",
     pic2Name: row.pic2_name || row.pic2Name || "",
+    pic1Cabang: row.pic1_cabang || row.pic1Cabang || "",
+    pic2Cabang: row.pic2_cabang || row.pic2Cabang || "",
+    genderMode: normalizeGenderMode(row.gender_mode ?? row.genderMode ?? "campur"),
     labelPrefix: row.label_prefix || row.labelPrefix || row.name || "Tim",
     sortOrder: Number(row.sort_order) || 0,
+  };
+}
+
+import { formatParticipantLabel } from "./csv.js";
+
+export function formatPicLine(name, cabang) {
+  return formatParticipantLabel(name, cabang);
+}
+
+export function withPicDetails(game, peopleById = new Map()) {
+  const pic1 = peopleById.get(Number(game?.pic1Id));
+  const pic2 = peopleById.get(Number(game?.pic2Id));
+  return {
+    ...game,
+    pic1Name: pic1?.nama || game?.pic1Name || "",
+    pic1Cabang: pic1?.cabang || game?.pic1Cabang || "",
+    pic2Name: pic2?.nama || game?.pic2Name || "",
+    pic2Cabang: pic2?.cabang || game?.pic2Cabang || "",
   };
 }

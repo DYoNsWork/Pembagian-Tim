@@ -1,10 +1,10 @@
 # Pembagian Tim
 
-Aplikasi web untuk membagi peserta ke dalam **grup permainan** secara acak. Data diunggah dari file CSV **tanpa header** berisi **nama**, **jenis kelamin**, **nama cabang**, dan **nomor peserta**. Cabang hanya ditampilkan; pengacakan tidak mengelompokkan berdasarkan cabang. PIC permainan dan peserta yang di-exclude tidak masuk grup.
+Aplikasi web untuk membagi peserta ke dalam **grup permainan** secara acak. Data diunggah dari file CSV **tanpa header** berisi **nama**, **jenis kelamin**, dan **nama cabang**. Cabang hanya ditampilkan; pengacakan tidak mengelompokkan berdasarkan cabang. PIC permainan dan peserta yang di-exclude tidak masuk grup.
 
-Pilih atau **buat sendiri** jenis permainan. Katalog mulai **kosong**. Bagi grup dengan komposisi **campur** (acak murni dari semua peserta), **laki-laki saja**, atau **perempuan saja**. Di HP, menu ada di **bawah layar**.
+Pilih atau **buat sendiri** jenis permainan. Katalog mulai **kosong**. **Dashboard** menampilkan progress tiap permainan dan peserta yang paling sering ikut undian. Di HP, menu ada di **bawah layar**.
 
-Masuk dengan akun. Admin bisa **tambah pengguna** dan memberi hak akses per menu: Peserta, Permainan, Pembagian, Hasil, atau Pengguna.
+Masuk dengan akun. Admin bisa **tambah pengguna**, **hapus data cloud**, dan **acak ulang**. Hak akses per menu: Peserta, Permainan, Pembagian, atau Pengguna. Hak **hasil** tetap ada untuk penonton, dibuka di menu Pembagian.
 
 Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disimpan di **Cloudflare D1**.
 
@@ -13,23 +13,21 @@ Aplikasi di-deploy ke **Cloudflare Workers**. Data peserta dan hasil undian disi
 1. Siapkan file CSV **tanpa header**. Baris pertama juga data. Urutan kolom:
 
    ```csv
-   Andi Pratama,L,Jakarta,01
-   Siti Rahmawati,P,Bandung,02
+   Andi Pratama,L,Jakarta
+   Siti Rahmawati,P,Bandung
    ```
 
-   Kolom: nama, jenis kelamin, nama cabang, nomor peserta. Excel Indonesia yang memakai titik koma (`;`) juga didukung. Peserta juga bisa ditambah/ubah/hapus satu per satu, atau di-exclude agar tidak ikut undian.
+   Kolom: nama, jenis kelamin, nama cabang. Excel Indonesia yang memakai titik koma (`;`) juga didukung. Peserta bisa ditambah/ubah/hapus satu per satu, diurutkan, atau di-exclude agar tidak ikut undian.
 
 2. Unggah CSV di aplikasi. Data langsung tersimpan di D1, jadi tetap ada setelah halaman di-refresh.
 
-3. Di menu **Permainan**, tambah jenis permainan: nama, penjelasan, jumlah grup, peserta per grup, **grup per sesi**, dan **2 PIC**. PIC tidak masuk ke grup saat pengacakan.
+3. Di menu **Permainan**, atur semua parameter: komposisi grup, jumlah grup, anggota per grup, grup per sesi, dan 2 PIC (cabang lalu peserta).
 
-4. Di menu **Pembagian**, pilih permainan dari menu tarik-turun, lalu pilih komposisi grup: **campur** (acak semua peserta, tanpa merata laki-laki/perempuan), **laki-laki saja**, atau **perempuan saja**. Setiap jenis lomba hanya punya **satu hasil acak**; membagi lagi mengganti hasil sebelumnya. Grup diberi nama sederhana (`Tim 1`, `Tim 2`, …); judul permainan tampil terpisah.
+4. Di menu **Pembagian**, pilih permainan lalu klik **Acak grup**. Parameter hanya ditampilkan (tidak bisa diubah di sini). Setiap permainan hanya boleh diacak sekali; **admin** saja yang bisa **Acak ulang**. Hasil tim per sesi dan bagan gugur tampil di halaman yang sama.
 
    Contoh: permainan “Gobak sodor” dengan 8 grup × 8 orang membutuhkan 64 peserta dari kumpulan yang dipilih. Jika lebih, sisanya masuk cadangan. Jika kurang, aplikasi menampilkan peringatan. Dengan 2 grup per sesi, bagan gugur membuat 4 pertandingan babak awal, lalu semifinal dan final.
 
-5. Hasil undian ada di menu **Hasil**, satu per permainan: daftar grup plus **bagan sistem gugur**. Klik grup pemenang di setiap sesi agar maju ke babak berikutnya. Bisa diganti dengan acak ulang.
-
-Gunakan **menu samping** di komputer, atau **menu bawah** di HP: Peserta, Permainan, Pembagian, Hasil, dan Pengguna (jika punya hak).
+Gunakan **menu samping** di komputer, atau **menu bawah** di HP: Peserta, Permainan, Pembagian, dan Pengguna (jika punya hak).
 
 Saat pertama kali dibuka, buat akun **admin**. Admin lalu menambah panitia atau penonton dan memilih hak aksesnya.
 
@@ -165,6 +163,6 @@ Setelah itu, setiap **push ke branch yang terhubung** akan di-deploy Cloudflare 
 ### Sesudah live
 
 1. Buka URL Workers.
-2. Unggah CSV peserta (`nama, jenis kelamin, nama cabang, nomor`) atau kelola peserta satu per satu.
+2. Unggah CSV peserta (`nama, jenis kelamin, nama cabang`) atau kelola peserta satu per satu.
 3. Data tersimpan di D1 Cloudflare, tidak hilang saat refresh.
-4. Tambah permainan (termasuk 2 PIC dan grup per sesi), pilih campur/laki-laki/perempuan, lalu bagi grup. Hasil dan bagan gugur ada di menu Hasil.
+4. Tambah permainan (2 PIC dipilih dari cabang, plus grup per sesi), lalu bagi grup. Hasil dan bagan gugur ada di menu Pembagian.

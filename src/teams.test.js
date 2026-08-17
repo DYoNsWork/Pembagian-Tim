@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { participantKey } from "./csv.js";
 import {
   divideTeams,
   filterByGender,
   genderModeLabel,
   normalizeGenderMode,
+  partitionByPlayed,
+  selectWithPlayPriority,
   shuffle,
   teamsToCsv,
 } from "./teams.js";
@@ -155,6 +158,40 @@ describe("divideTeams", () => {
     expect(() =>
       divideTeams(people(8), { teamCount: 3, membersPerTeam: 4, genderMode: "laki-laki" }),
     ).toThrow(/laki-laki tidak cukup/i);
+  });
+
+  it("memprioritaskan peserta yang belum pernah masuk tim di permainan lain", () => {
+    const pool = people(8);
+    const played = new Set(pool.slice(0, 4).map((person) => participantKey(person.nama, person.cabang)));
+    const result = divideTeams(
+      pool,
+      { teamCount: 1, membersPerTeam: 4, playedKeys: played },
+      () => 0.5,
+    );
+    const usedIds = result.teams[0].members.map((member) => Number(member.id));
+    expect(usedIds.every((id) => id >= 5)).toBe(true);
+    expect(result.leftover.map((member) => Number(member.id)).sort()).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe("selectWithPlayPriority", () => {
+  it("mengisi slot dari peserta baru dulu", () => {
+    const pool = people(6);
+    const played = new Set([participantKey(pool[0].nama, pool[0].cabang)]);
+    const picked = selectWithPlayPriority(pool, 3, played, () => 0.5);
+    expect(picked.some((person) => person.id === pool[0].id)).toBe(false);
+    expect(picked).toHaveLength(3);
+  });
+});
+
+describe("partitionByPlayed", () => {
+  it("memisahkan peserta baru dan yang sudah pernah main", () => {
+    const pool = people(4);
+    const played = new Set([participantKey(pool[1].nama, pool[1].cabang)]);
+    const { fresh, veterans } = partitionByPlayed(pool, played);
+    expect(fresh).toHaveLength(3);
+    expect(veterans).toHaveLength(1);
+    expect(veterans[0].id).toBe(pool[1].id);
   });
 });
 

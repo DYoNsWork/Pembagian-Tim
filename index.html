@@ -4,12 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0b1210" />
+    <meta name="theme-color" content="#0b1020" />
     <title>Pembagian Grup Permainan</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/style.css" />
@@ -64,24 +64,28 @@
           </div>
         </div>
         <nav class="side-nav" id="side-nav" aria-label="Menu utama">
-          <button type="button" class="nav-item is-active" data-view="peserta">
+          <button type="button" class="nav-item is-active" data-view="dashboard">
             <span class="nav-index">01</span>
+            <span>Dashboard</span>
+          </button>
+          <button type="button" class="nav-item" data-view="daftar">
+            <span class="nav-index">03</span>
+            <span>Daftar</span>
+          </button>
+          <button type="button" class="nav-item" data-view="peserta">
+            <span class="nav-index">04</span>
             <span>Peserta</span>
           </button>
           <button type="button" class="nav-item" data-view="permainan">
-            <span class="nav-index">02</span>
+            <span class="nav-index">05</span>
             <span>Permainan</span>
           </button>
           <button type="button" class="nav-item" data-view="pembagian">
-            <span class="nav-index">03</span>
+            <span class="nav-index">06</span>
             <span>Pembagian</span>
           </button>
-          <button type="button" class="nav-item" data-view="hasil">
-            <span class="nav-index">04</span>
-            <span>Hasil</span>
-          </button>
           <button type="button" class="nav-item hidden" data-view="pengguna">
-            <span class="nav-index">05</span>
+            <span class="nav-index">07</span>
             <span>Pengguna</span>
           </button>
         </nav>
@@ -89,7 +93,6 @@
           <p class="user-chip" id="sidebar-user">—</p>
           <button type="button" class="secondary logout-btn">Keluar</button>
         </div>
-        <p class="cloud-status" id="cloud-status">Menghubungkan ke Cloudflare D1…</p>
         <button type="button" class="danger hidden" id="clear-cloud">Hapus data cloud</button>
       </aside>
       <div class="nav-backdrop hidden" id="nav-backdrop"></div>
@@ -97,8 +100,8 @@
       <div class="page">
         <header class="topbar">
           <div>
-            <p class="eyebrow" id="view-eyebrow">Peserta</p>
-            <h1 id="view-title">Data peserta</h1>
+            <p class="eyebrow" id="view-eyebrow">Dashboard</p>
+            <h1 id="view-title">Beranda</h1>
           </div>
           <div class="topbar-user">
             <span class="user-chip" id="topbar-user">—</span>
@@ -107,11 +110,11 @@
         </header>
 
         <main>
-          <section class="view" id="view-peserta">
+          <section class="view hidden" id="view-peserta">
             <section class="panel" id="upload-panel">
               <div class="panel-head">
                 <h2>Unggah data peserta</h2>
-                <a class="ghost-link" href="./contoh-peserta.csv" download>Unduh contoh CSV</a>
+                <a class="ghost-link ghost-link-sm" href="./contoh-peserta.csv" download>Unduh CSV</a>
               </div>
               <label class="dropzone" id="dropzone" for="file-input">
                 <input id="file-input" type="file" accept=".csv,text/csv" hidden />
@@ -119,7 +122,7 @@
                 <span>
                   <strong>Seret file ke sini</strong> atau klik untuk memilih.
                   Tanpa header. Baris pertama juga data:
-                  <code>nama, jenis kelamin, nama cabang, nomor</code>
+                  <code>nama, jenis kelamin, nama cabang</code>
                 </span>
               </label>
               <p class="hint" id="file-status">Belum ada file yang diunggah. Data akan disimpan ke Cloudflare D1.</p>
@@ -128,7 +131,18 @@
             <section class="panel" id="data-panel">
               <div class="panel-head">
                 <h2>Daftar peserta</h2>
-                <button type="button" class="secondary" id="add-participant">Tambah peserta</button>
+                <div class="panel-tools">
+                  <label class="sort-label">
+                    Urutkan
+                    <select id="participant-sort">
+                      <option value="nama-asc">Nama A–Z</option>
+                      <option value="nama-desc">Nama Z–A</option>
+                      <option value="cabang">Cabang</option>
+                      <option value="status">Status</option>
+                    </select>
+                  </label>
+                  <button type="button" class="secondary" id="add-participant">Tambah</button>
+                </div>
               </div>
               <p class="muted" id="file-name"></p>
               <div class="stats" id="stats"></div>
@@ -149,10 +163,7 @@
                   Nama cabang
                   <input id="participant-cabang" type="text" maxlength="80" required />
                 </label>
-                <label>
-                  Nomor peserta
-                  <input id="participant-nomor" type="text" maxlength="40" placeholder="Opsional" />
-                </label>
+                <p class="hint game-editor-wide">Identitas peserta = nama + cabang. Nama yang sama di cabang berbeda dianggap orang berbeda.</p>
                 <label class="check-row">
                   <input id="participant-excluded" type="checkbox" />
                   Tidak ikut permainan / undian
@@ -169,10 +180,8 @@
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>Nama</th>
-                      <th>Nomor</th>
+                      <th>Peserta</th>
                       <th>Jenis kelamin</th>
-                      <th>Nama cabang</th>
                       <th>Status</th>
                       <th></th>
                     </tr>
@@ -180,6 +189,56 @@
                   <tbody id="participant-rows"></tbody>
                 </table>
               </div>
+            </section>
+          </section>
+
+          <section class="view hidden" id="view-daftar">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Daftar peserta</h2>
+                <label class="sort-label">
+                  Urutkan
+                  <select id="directory-sort">
+                    <option value="nama-asc">Nama A–Z</option>
+                    <option value="nama-desc">Nama Z–A</option>
+                    <option value="cabang">Cabang</option>
+                  </select>
+                </label>
+              </div>
+              <p class="hint" id="directory-count">0 peserta</p>
+              <div class="table-wrap directory-table-wrap">
+                <table class="directory-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Nama</th>
+                      <th>Cabang</th>
+                      <th>Jenis kelamin</th>
+                    </tr>
+                  </thead>
+                  <tbody id="directory-rows"></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+
+          <section class="view" id="view-dashboard">
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Progress permainan</h2>
+              </div>
+              <div id="dashboard-games" class="chart-panel" aria-label="Grafik progress permainan"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Peserta terbaik</h2>
+              </div>
+              <p class="hint">Partisipasi (permainan diikuti) dan juara sesi final — tanpa pemain cadangan.</p>
+              <div class="chart-legend">
+                <span><i class="legend-dot is-games"></i> Permainan</span>
+                <span><i class="legend-dot is-wins"></i> Juara final</span>
+              </div>
+              <div id="dashboard-top" class="chart-panel" aria-label="Grafik peserta terbaik"></div>
             </section>
           </section>
 
@@ -192,8 +251,8 @@
                 <p class="hint">
                   Katalog mulai kosong. Tambah permainan dengan nama, penjelasan, jumlah
                   grup, peserta per grup, dan berapa grup bertanding di setiap sesi.
-                  Saat membagi grup, pilih permainan dari menu tarik-turun di halaman
-                  Pembagian. Hasil undian sekaligus membuat bagan sistem gugur.
+                  Saat membagi grup, pilih permainan di menu Pembagian.
+                  Hasil undian dan bagan gugur tampil di halaman yang sama.
                 </p>
                 <div class="game-toolbar">
                   <button type="button" class="secondary" id="add-game">Tambah permainan</button>
@@ -223,19 +282,45 @@
                     <input id="game-groups-per-session" type="number" min="2" max="16" step="1" required placeholder="2" />
                   </label>
                   <label>
-                    PIC 1
-                    <select id="game-pic-1" required>
-                      <option value="">Pilih PIC 1</option>
+                    Komposisi grup
+                    <select id="game-gender-mode" required>
+                      <option value="campur">Campur</option>
+                      <option value="laki-laki">Laki-laki saja</option>
+                      <option value="perempuan">Perempuan saja</option>
                     </select>
                   </label>
-                  <label>
-                    PIC 2
-                    <select id="game-pic-2" required>
-                      <option value="">Pilih PIC 2</option>
-                    </select>
-                  </label>
+                  <div class="pic-picker game-editor-wide">
+                    <p class="pic-picker-title">PIC 1</p>
+                    <label>
+                      Cabang
+                      <select id="game-pic-1-cabang" required>
+                        <option value="">Pilih cabang</option>
+                      </select>
+                    </label>
+                    <label>
+                      Peserta
+                      <select id="game-pic-1" required>
+                        <option value="">Pilih peserta</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="pic-picker game-editor-wide">
+                    <p class="pic-picker-title">PIC 2</p>
+                    <label>
+                      Cabang
+                      <select id="game-pic-2-cabang" required>
+                        <option value="">Pilih cabang</option>
+                      </select>
+                    </label>
+                    <label>
+                      Peserta
+                      <select id="game-pic-2" required>
+                        <option value="">Pilih peserta</option>
+                      </select>
+                    </label>
+                  </div>
                   <p class="hint game-editor-wide">
-                    PIC tidak masuk ke grup saat pengacakan.
+                    Pilih cabang dulu, lalu peserta dari cabang itu. PIC tidak masuk ke grup saat pengacakan.
                   </p>
                   <p class="hint game-editor-wide">
                     Berapa grup bertanding di setiap sesi. 2 = satu lawan satu.
@@ -252,85 +337,53 @@
           </section>
 
           <section class="view hidden" id="view-pembagian">
-            <section class="panel">
+            <section class="panel" id="draw-panel">
               <div class="panel-head">
                 <h2>Bagi grup</h2>
               </div>
               <p class="empty-games hidden" id="draw-empty">
                 Unggah peserta dan tambah permainan dulu, lalu kembali ke menu Pembagian.
               </p>
-              <form id="config-form" class="draw-settings hidden">
-                <label class="game-select-wide">
-                  Permainan
-                  <select id="draw-game" required>
-                    <option value="">Pilih permainan</option>
-                  </select>
-                </label>
-                <p class="hint" id="selected-game-label">Pilih permainan yang akan diundi.</p>
-                <p class="hint hidden" id="draw-replace-hint">
-                  Permainan ini sudah punya hasil acak. Membagi lagi akan mengganti hasil yang ada.
-                </p>
-                <fieldset class="gender-fieldset">
-                  <legend>Komposisi grup</legend>
-                  <div class="gender-modes" id="gender-modes" role="radiogroup" aria-label="Komposisi grup">
-                    <label class="gender-mode is-selected">
-                      <input type="radio" name="gender-mode" value="campur" checked />
-                      <span>Campur</span>
-                      <small id="count-campur">0 peserta</small>
-                    </label>
-                    <label class="gender-mode">
-                      <input type="radio" name="gender-mode" value="laki-laki" />
-                      <span>Laki-laki</span>
-                      <small id="count-laki">0 orang</small>
-                    </label>
-                    <label class="gender-mode">
-                      <input type="radio" name="gender-mode" value="perempuan" />
-                      <span>Perempuan</span>
-                      <small id="count-perempuan">0 orang</small>
-                    </label>
-                  </div>
-                </fieldset>
-                <div class="config-grid">
-                  <label>
-                    Jumlah grup
-                    <input id="team-count" type="number" min="1" step="1" value="16" required />
+              <form id="config-form" class="draw-compact hidden">
+                <div class="draw-game-bar">
+                  <label class="game-select-wide">
+                    Permainan
+                    <select id="draw-game" required>
+                      <option value="">Pilih permainan</option>
+                    </select>
                   </label>
-                  <label>
-                    Anggota per grup
-                    <input id="members-per-team" type="number" min="1" step="1" value="4" required />
-                  </label>
-                  <div class="need-box" id="need-box">
-                    Kebutuhan: <strong>64 orang</strong>
-                  </div>
+                  <div id="draw-info" class="draw-info hidden"></div>
                 </div>
-                <button type="submit" class="primary" id="draw-submit">Bagi grup secara acak</button>
-                <p class="hint">
-                  Campur mengacak semua peserta tanpa membedakan laki-laki atau
-                  perempuan. Mode laki-laki atau perempuan hanya memakai peserta sesuai
-                  pilihan. Pengacakan tidak melihat cabang. Bagan sistem gugur mengikuti
-                  jumlah grup per sesi pada definisi permainan.
-                </p>
+                <p class="hint" id="draw-pool-hint"></p>
+                <p class="hint hidden" id="draw-locked-hint">Hasil acak sudah dibuat. Admin bisa acak ulang atau reset pembagian.</p>
+                <div class="draw-actions">
+                  <button type="submit" class="primary" id="draw-submit">Acak grup</button>
+                  <button type="button" class="secondary hidden" id="reshuffle">Acak ulang</button>
+                  <button type="button" class="danger hidden" id="reset-draw">Reset pembagian</button>
+                </div>
                 <p class="error hidden" id="config-error"></p>
               </form>
             </section>
-          </section>
-
-          <section class="view hidden" id="view-hasil">
             <section class="panel hidden" id="result-panel">
-              <div class="panel-head">
-                <h2 id="result-title">Grup permainan</h2>
-                <div class="actions">
-                  <select id="draw-history" class="hidden" aria-label="Hasil per permainan"></select>
-                  <button type="button" class="secondary" id="reshuffle">Acak ulang</button>
-                </div>
+              <div class="panel-head result-toolbar">
+                <h2>Hasil acakan</h2>
+                <button type="button" class="secondary hidden" id="edit-teams">Edit komposisi tim</button>
               </div>
-              <p class="result-meta" id="result-meta"></p>
-              <h3 class="section-title">Daftar tim</h3>
-              <div class="teams" id="teams"></div>
-              <section class="bracket hidden" id="bracket"></section>
-              <div class="leftover hidden" id="leftover"></div>
+              <section class="panel team-editor-panel hidden" id="team-editor-panel">
+                <div class="panel-head">
+                  <h3>Ubah anggota tim</h3>
+                  <div class="draw-actions">
+                    <button type="button" class="primary" id="team-editor-save">Simpan</button>
+                    <button type="button" class="secondary" id="team-editor-cancel">Batal</button>
+                  </div>
+                </div>
+                <p class="hint">Pilih peserta untuk setiap slot. Satu peserta hanya boleh di satu tim.</p>
+                <p class="error hidden" id="team-editor-error"></p>
+                <div class="team-editor-grid" id="team-editor-grid"></div>
+              </section>
+              <div id="tourney-board" class="tourney-board"></div>
             </section>
-            <p class="empty-games" id="result-empty">Belum ada hasil pembagian. Bagi grup di menu <strong>Pembagian</strong> untuk melihat daftar grup dan bagan gugur.</p>
+            <p class="empty-games" id="result-empty">Belum ada hasil. Bagi grup di atas untuk melihat daftar tim dan bagan gugur.</p>
           </section>
 
           <section class="view hidden" id="view-pengguna">
@@ -341,7 +394,7 @@
               </div>
               <p class="hint">
                 Setiap akun mendapat peran dan hak akses menu. Admin bisa mengatur semua.
-                Panitia mengelola undian. Penonton hanya melihat hasil.
+                Panitia mengelola undian. Penonton hanya melihat hasil di menu Pembagian.
               </p>
               <div class="user-list" id="user-list"></div>
               <form id="user-editor" class="user-editor hidden">
@@ -382,13 +435,21 @@
 
         <footer>
           <p>
-            Di HP, pakai menu bawah. Di komputer, pakai menu samping. Masuk dengan akun
-            yang punya hak akses, lalu unggah peserta, atur permainan, dan bagi grup.
+            Di HP pakai menu bawah. Di komputer pakai menu samping. Unggah peserta, atur
+            permainan, lalu bagi grup di menu Pembagian.
           </p>
         </footer>
       </div>
       <nav class="bottom-nav" id="bottom-nav" aria-label="Menu bawah">
-        <button type="button" class="bottom-nav-item is-active" data-view="peserta">
+        <button type="button" class="bottom-nav-item is-active" data-view="dashboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 4h6v7H5Zm8 0h6v4h-6Zm0 6h6v10h-6ZM5 13h6v7H5Z"/></svg>
+          <span>Board</span>
+        </button>
+        <button type="button" class="bottom-nav-item" data-view="daftar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 6h16v2H4V6Zm0 5h16v2H4v-2Zm0 5h16v2H4v-2Z"/></svg>
+          <span>Daftar</span>
+        </button>
+        <button type="button" class="bottom-nav-item" data-view="peserta">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5Z"/></svg>
           <span>Peserta</span>
         </button>
@@ -400,15 +461,14 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 4v2H4v4h2V8h4v2l3-3-3-3Zm4 10 3 3-3 3v-2H8v-2h6Zm7-5-3-3v2h-4v2h4v2Z"/></svg>
           <span>Bagi</span>
         </button>
-        <button type="button" class="bottom-nav-item" data-view="hasil">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 4h6v7H5Zm8 0h6v4h-6Zm0 6h6v10h-6ZM5 13h6v7H5Z"/></svg>
-          <span>Hasil</span>
-        </button>
         <button type="button" class="bottom-nav-item hidden" data-view="pengguna">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3ZM8 13c-3.3 0-6 1.7-6 3.5V18h8v-1.5C10 14.7 8.7 13 8 13Zm8 0c-.3 0-.7 0-1 .1 1.2.8 2 2 2 3.4V18h7v-1.5c0-1.8-2.7-3.5-6-3.5Z"/></svg>
           <span>User</span>
         </button>
       </nav>
+      <div class="status-bar" id="status-bar">
+        <p class="cloud-status" id="cloud-status">Menghubungkan ke Cloudflare D1…</p>
+      </div>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

@@ -80,6 +80,15 @@ export function requireAnyRight(user, rights) {
   }
 }
 
+export function requireAdmin(user) {
+  if (!user) {
+    throw Object.assign(new Error("Silakan masuk dulu."), { status: 401 });
+  }
+  if (user.role !== "admin") {
+    throw Object.assign(new Error("Hanya admin yang bisa melakukan aksi ini."), { status: 403 });
+  }
+}
+
 export async function handleAuth(request, env, path) {
   if (path === "/api/auth/me" && request.method === "GET") {
     const needsSetup = (await userCount(env)) === 0;

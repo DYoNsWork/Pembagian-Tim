@@ -1,11 +1,14 @@
-import { divideTeams, normalizeGenderMode } from "../src/teams.js";
-import { chunk, extraDrawIds, groupDrawMembers, normalizeParticipant, personFromRow } from "../src/draws.js";
+import { divideTeams, eligibleParticipants, normalizeGenderMode } from "../src/teams.js";
+import { chunk, extraDrawIds, groupDrawMembers, normalizeParticipant, normalizeTeamComposition, personFromRow, playedParticipantKeys } from "../src/draws.js";
+import { gameProgressRows, participantLeaderboard } from "../src/dashboard.js";
+import { findDuplicateParticipantKeys, formatParticipantLabel, participantKey } from "../src/csv.js";
 import {
   gameFromRow,
   getGame,
   MAX_GAMES,
   MAX_GROUPS_PER_SESSION,
   normalizeGame,
+  withPicDetails,
 } from "../src/games.js";
 import { buildKnockoutBracket, parseBracket, setMatchWinner } from "../src/bracket.js";
 import {
@@ -16,6 +19,7 @@ import {
   handleAuth,
   listUsers,
   requireAnyRight,
+  requireAdmin,
   requireRight,
   updateUser,
 } from "./auth.js";
@@ -87,7 +91,7 @@ async function handleApi(request, env, url) {
   }
 
   if (path === "/api/participants" && request.method === "GET") {
-    requireAnyRight(user, ["peserta", "permainan", "pembagian"]);
+    requireAnyRight(user, ["peserta", "permainan", "pembagian", "daftar"]);
     return json(await listParticipants(env));
   }
 
@@ -154,10 +158,15 @@ async function handleApi(request, env, url) {
     return json(await listDraws(env));
   }
 
+  if (path === "/api/dashboard" && request.method === "GET") {
+    requireAnyRight(user, ["pembagian", "hasil", "permainan"]);
+    return json(await getDashboard(env));
+  }
+
   if (path === "/api/draws" && request.method === "POST") {
     requireRight(user, "pembagian");
     const body = await readJson(request);
-    return json(await createDraw(env, body), 201);
+    return json(await createDraw(env, body, user), 201);
   }
 
   const drawMatch = path.match(/^\/api\/draws\/(\d+)$/);
@@ -174,13 +183,25 @@ async function handleApi(request, env, url) {
     return json(await updateDrawBracket(env, Number(drawMatch[1]), body));
   }
 
+  if (drawMatch && request.method === "DELETE") {
+    requireAdmin(user);
+    return json(await resetDraw(env, Number(drawMatch[1])));
+  }
+
+  const drawTeamsMatch = path.match(/^\/api\/draws\/(\d+)\/teams$/);
+  if (drawTeamsMatch && request.method === "PUT") {
+    requireAdmin(user);
+    const body = await readJson(request);
+    return json(await updateDrawTeams(env, Number(drawTeamsMatch[1]), body));
+  }
+
   return json({ error: "Endpoint tidak ditemukan." }, 404);
 }
 
 async function listParticipants(env) {
   const [{ results }, filenameRow] = await Promise.all([
     env.DB.prepare(
-      "SELECT id, nama, jenis_kelamin, cabang, nomor, excluded FROM participants ORDER BY id ASC",
+      "SELECT id, nama, jenis_kelamin, cabang, excluded FROM participants ORDER BY id ASC",
     ).all(),
     env.DB.prepare("SELECT value FROM meta WHERE key = ?").bind("source_filename").first(),
   ]);
@@ -214,6 +235,14 @@ async function saveParticipants(env, body) {
     );
   }
 
+  const duplicates = findDuplicateParticipantKeys(participants);
+  if (duplicates.length) {
+    throw Object.assign(
+      new Error(`Peserta ganda (nama + cabang sama): ${duplicates.join(", ")}.`),
+      { status: 400 },
+    );
+  }
+
   await env.DB.batch([
     env.DB.prepare("DELETE FROM participants"),
     env.DB.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").bind(
@@ -223,12 +252,12 @@ async function saveParticipants(env, body) {
   ]);
 
   const insert = env.DB.prepare(
-    "INSERT INTO participants (nama, jenis_kelamin, cabang, nomor, excluded) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO participants (nama, jenis_kelamin, cabang, excluded) VALUES (?, ?, ?, ?)",
   );
   for (const group of chunk(participants, INSERT_CHUNK)) {
     await env.DB.batch(
       group.map((person) =>
-        insert.bind(person.nama, person.jenisKelamin, person.cabang, person.nomor, person.excluded ? 1 : 0),
+        insert.bind(person.nama, person.jenisKelamin, person.cabang, person.excluded ? 1 : 0),
       ),
     );
   }
@@ -243,10 +272,17 @@ async function createParticipant(env, body) {
     throw Object.assign(new Error(`Maksimal ${MAX_PARTICIPANTS} peserta.`), { status: 400 });
   }
   const parsed = normalizeParticipant(body);
+  const duplicate = await findParticipantByKey(env, parsed.nama, parsed.cabang);
+  if (duplicate) {
+    throw Object.assign(
+      new Error(`Peserta sudah ada: ${formatParticipantLabel(parsed.nama, parsed.cabang)}.`),
+      { status: 409 },
+    );
+  }
   await env.DB.prepare(
-    "INSERT INTO participants (nama, jenis_kelamin, cabang, nomor, excluded) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO participants (nama, jenis_kelamin, cabang, excluded) VALUES (?, ?, ?, ?)",
   )
-    .bind(parsed.nama, parsed.jenisKelamin, parsed.cabang, parsed.nomor, parsed.excluded ? 1 : 0)
+    .bind(parsed.nama, parsed.jenisKelamin, parsed.cabang, parsed.excluded ? 1 : 0)
     .run();
   return listParticipants(env);
 }
@@ -257,10 +293,17 @@ async function updateParticipant(env, id, body) {
     throw Object.assign(new Error("Peserta tidak ditemukan."), { status: 404 });
   }
   const parsed = normalizeParticipant(body);
+  const duplicate = await findParticipantByKey(env, parsed.nama, parsed.cabang, id);
+  if (duplicate) {
+    throw Object.assign(
+      new Error(`Peserta sudah ada: ${formatParticipantLabel(parsed.nama, parsed.cabang)}.`),
+      { status: 409 },
+    );
+  }
   await env.DB.prepare(
-    "UPDATE participants SET nama = ?, jenis_kelamin = ?, cabang = ?, nomor = ?, excluded = ? WHERE id = ?",
+    "UPDATE participants SET nama = ?, jenis_kelamin = ?, cabang = ?, excluded = ? WHERE id = ?",
   )
-    .bind(parsed.nama, parsed.jenisKelamin, parsed.cabang, parsed.nomor, parsed.excluded ? 1 : 0, id)
+    .bind(parsed.nama, parsed.jenisKelamin, parsed.cabang, parsed.excluded ? 1 : 0, id)
     .run();
   return listParticipants(env);
 }
@@ -272,6 +315,16 @@ async function deleteParticipant(env, id) {
   }
   await env.DB.prepare("DELETE FROM participants WHERE id = ?").bind(id).run();
   return listParticipants(env);
+}
+
+async function findParticipantByKey(env, nama, cabang, excludeId = null) {
+  const { results } = await env.DB.prepare(
+    "SELECT id, nama, jenis_kelamin, cabang, excluded FROM participants",
+  ).all();
+  const key = participantKey(nama, cabang);
+  return (results || []).find(
+    (row) => participantKey(row.nama, row.cabang) === key && Number(row.id) !== Number(excludeId),
+  );
 }
 
 async function listDraws(env) {
@@ -294,18 +347,11 @@ async function listDraws(env) {
 
 async function listGames(env) {
   const { results } = await env.DB.prepare(
-    "SELECT id, name, members, team_count, groups_per_session, pic1_id, pic2_id, description, label_prefix, is_builtin, sort_order FROM games ORDER BY sort_order ASC, name ASC",
+    "SELECT id, name, members, team_count, groups_per_session, pic1_id, pic2_id, gender_mode, description, label_prefix, is_builtin, sort_order FROM games ORDER BY sort_order ASC, name ASC",
   ).all();
-  const people = await env.DB.prepare("SELECT id, nama FROM participants").all();
-  const names = new Map((people.results || []).map((row) => [Number(row.id), row.nama]));
-  return (results || []).map((row) => {
-    const game = gameFromRow(row);
-    return {
-      ...game,
-      pic1Name: names.get(game.pic1Id) || "",
-      pic2Name: names.get(game.pic2Id) || "",
-    };
-  });
+  const people = await env.DB.prepare("SELECT id, nama, jenis_kelamin, cabang, excluded FROM participants").all();
+  const byId = new Map((people.results || []).map((row) => [Number(row.id), personFromRow(row)]));
+  return (results || []).map((row) => withPicDetails(gameFromRow(row), byId));
 }
 
 async function createGame(env, body) {
@@ -317,7 +363,7 @@ async function createGame(env, body) {
   const parsed = normalizeGame(body, { existingIds: games.map((game) => game.id) });
   const sortOrder = games.reduce((max, game) => Math.max(max, game.sortOrder), 0) + 1;
   await env.DB.prepare(
-    "INSERT INTO games (id, name, members, team_count, groups_per_session, pic1_id, pic2_id, description, label_prefix, is_builtin, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
+    "INSERT INTO games (id, name, members, team_count, groups_per_session, pic1_id, pic2_id, gender_mode, description, label_prefix, is_builtin, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
   )
     .bind(
       parsed.id,
@@ -327,6 +373,7 @@ async function createGame(env, body) {
       parsed.groupsPerSession,
       parsed.pic1Id,
       parsed.pic2Id,
+      parsed.genderMode,
       parsed.description,
       parsed.labelPrefix,
       sortOrder,
@@ -347,7 +394,7 @@ async function updateGame(env, id, body) {
 
   const parsed = normalizeGame(body, { id, existingIds: games.map((game) => game.id) });
   await env.DB.prepare(
-    "UPDATE games SET name = ?, members = ?, team_count = ?, groups_per_session = ?, pic1_id = ?, pic2_id = ?, description = ?, label_prefix = ? WHERE id = ?",
+    "UPDATE games SET name = ?, members = ?, team_count = ?, groups_per_session = ?, pic1_id = ?, pic2_id = ?, gender_mode = ?, description = ?, label_prefix = ? WHERE id = ?",
   )
     .bind(
       parsed.name,
@@ -356,6 +403,7 @@ async function updateGame(env, id, body) {
       parsed.groupsPerSession,
       parsed.pic1Id,
       parsed.pic2Id,
+      parsed.genderMode,
       parsed.description,
       parsed.labelPrefix,
       id,
@@ -383,7 +431,7 @@ async function deleteGame(env, id) {
   return { ok: true, deletedId: id, games: await listGames(env) };
 }
 
-async function createDraw(env, body) {
+async function createDraw(env, body, user) {
   const games = await listGames(env);
   if (!games.length) {
     throw Object.assign(new Error("Belum ada jenis permainan. Tambah permainan dulu."), {
@@ -394,19 +442,20 @@ async function createDraw(env, body) {
   if (!game) {
     throw Object.assign(new Error("Pilih jenis permainan yang valid."), { status: 400 });
   }
-  const teamCount = Number(body?.teamCount) || game.teamCount;
-  const membersPerTeam = Number(body?.membersPerTeam) || game.members;
-  const genderMode = normalizeGenderMode(body?.genderMode);
-  const groupsPerSession = Number(body?.groupsPerSession) || game.groupsPerSession || 2;
-  if (
-    !Number.isInteger(groupsPerSession) ||
-    groupsPerSession < 2 ||
-    groupsPerSession > MAX_GROUPS_PER_SESSION
-  ) {
+  const teamCount = game.teamCount;
+  const membersPerTeam = game.members;
+  const genderMode = normalizeGenderMode(game.genderMode);
+  const groupsPerSession = game.groupsPerSession || 2;
+  const existing = await env.DB.prepare("SELECT id FROM draws WHERE game_id = ?").bind(game.id).first();
+  const replace = Boolean(body?.replace);
+  if (existing && !replace) {
     throw Object.assign(
-      new Error(`Grup per sesi harus bilangan 2–${MAX_GROUPS_PER_SESSION}.`),
-      { status: 400 },
+      new Error("Hasil acak sudah ada untuk permainan ini. Hanya admin yang bisa mengacak ulang."),
+      { status: 409 },
     );
+  }
+  if (existing && replace && user?.role !== "admin") {
+    throw Object.assign(new Error("Hanya admin yang bisa mengacak ulang."), { status: 403 });
   }
   const stored = await listParticipants(env);
   const picIds = [game.pic1Id, game.pic2Id];
@@ -416,12 +465,14 @@ async function createDraw(env, body) {
   }
   let result;
   try {
+    const playedKeys = await listPlayedKeysForOtherGames(env, game.id);
     result = divideTeams(stored.participants, {
       teamCount,
       membersPerTeam,
       gameName: game.name,
       genderMode,
       picIds,
+      playedKeys,
     });
   } catch (error) {
     throw Object.assign(error, { status: 400 });
@@ -429,7 +480,6 @@ async function createDraw(env, body) {
 
   const bracket = buildKnockoutBracket(result.teams, groupsPerSession);
 
-  const existing = await env.DB.prepare("SELECT id FROM draws WHERE game_id = ?").bind(game.id).first();
   if (existing) {
     await deleteDraw(env, existing.id);
   }
@@ -501,6 +551,8 @@ async function createDraw(env, body) {
     pic2Id: game.pic2Id,
     pic1Name: game.pic1Name,
     pic2Name: game.pic2Name,
+    pic1Cabang: game.pic1Cabang,
+    pic2Cabang: game.pic2Cabang,
     bracket,
     replaced: Boolean(existing),
   };
@@ -540,10 +592,85 @@ async function getDraw(env, id) {
     groupsPerSession,
     pic1Name: game?.pic1Name || "",
     pic2Name: game?.pic2Name || "",
+    pic1Cabang: game?.pic1Cabang || "",
+    pic2Cabang: game?.pic2Cabang || "",
     bracket,
     needed: draw.team_count * draw.members_per_team,
     ...grouped,
   };
+}
+
+async function listPlayedKeysForOtherGames(env, excludeGameId) {
+  const { results } = await env.DB.prepare(
+    `SELECT DISTINCT dm.nama, dm.cabang, dm.team_number
+     FROM draw_members dm
+     INNER JOIN draws d ON d.id = dm.draw_id
+     WHERE dm.team_number > 0 AND d.game_id != ?`,
+  )
+    .bind(excludeGameId || "")
+    .all();
+  return playedParticipantKeys(results);
+}
+
+async function updateDrawTeams(env, id, body) {
+  const draw = await getDraw(env, id);
+  if (!draw) {
+    throw Object.assign(new Error("Hasil undian tidak ditemukan."), { status: 404 });
+  }
+
+  const games = await listGames(env);
+  const game = games.find((item) => item.id === draw.gameId);
+  if (!game) {
+    throw Object.assign(new Error("Permainan untuk undian ini tidak ditemukan."), { status: 400 });
+  }
+
+  const stored = await listParticipants(env);
+  const eligible = eligibleParticipants(stored.participants, {
+    genderMode: draw.genderMode,
+    picIds: [game.pic1Id, game.pic2Id],
+  });
+  const eligibleById = new Map(eligible.map((person) => [Number(person.id), person]));
+
+  const { teams, leftover } = normalizeTeamComposition(body?.teams, {
+    teamCount: draw.teamCount,
+    membersPerTeam: draw.membersPerTeam,
+    eligibleById,
+  });
+
+  await env.DB.prepare("DELETE FROM draw_members WHERE draw_id = ?").bind(id).run();
+
+  const memberStmt = env.DB.prepare(
+    "INSERT INTO draw_members (draw_id, team_number, team_name, nama, jenis_kelamin, cabang) VALUES (?, ?, ?, ?, ?, ?)",
+  );
+  const rows = [];
+
+  for (const team of teams) {
+    for (const member of team.members) {
+      rows.push(
+        memberStmt.bind(
+          id,
+          team.number,
+          team.name,
+          member.nama,
+          member.jenisKelamin,
+          member.cabang,
+        ),
+      );
+    }
+  }
+
+  for (const member of leftover) {
+    rows.push(
+      memberStmt.bind(id, 0, "Cadangan", member.nama, member.jenisKelamin, member.cabang),
+    );
+  }
+
+  for (const group of chunk(rows, INSERT_CHUNK)) {
+    await env.DB.batch(group);
+  }
+
+  console.log("draw_teams_updated", { id, teams: teams.length, leftover: leftover.length });
+  return getDraw(env, id);
 }
 
 async function updateDrawBracket(env, id, body) {
@@ -564,6 +691,41 @@ async function updateDrawBracket(env, id, body) {
     .bind(JSON.stringify(bracket), id)
     .run();
   return { ...draw, bracket };
+}
+
+async function getDashboard(env) {
+  const games = await listGames(env);
+  const { results: drawRows } = await env.DB.prepare(
+    "SELECT id, game_id, game_name, bracket FROM draws",
+  ).all();
+  const drawsByGame = new Map(
+    (drawRows || []).map((row) => [row.game_id, { id: row.id, bracket: row.bracket }]),
+  );
+  const { results: memberRows } = await env.DB.prepare(
+    "SELECT draw_id, team_number, nama, cabang FROM draw_members WHERE team_number > 0",
+  ).all();
+  const drawSnapshots = (drawRows || []).map((row) => ({
+    drawId: row.id,
+    bracket: row.bracket,
+    members: (memberRows || []).filter((member) => Number(member.draw_id) === Number(row.id)),
+  }));
+  return {
+    games: gameProgressRows(games, drawsByGame),
+    topParticipants: participantLeaderboard(memberRows, drawSnapshots, 10),
+  };
+}
+
+async function resetDraw(env, id) {
+  const draw = await env.DB.prepare("SELECT id, game_name FROM draws WHERE id = ?").bind(id).first();
+  if (!draw) {
+    throw Object.assign(new Error("Hasil undian tidak ditemukan."), { status: 404 });
+  }
+  await deleteDraw(env, id);
+  return {
+    ok: true,
+    gameName: draw.game_name || "Permainan",
+    ...(await listDraws(env)),
+  };
 }
 
 async function deleteDraw(env, id) {
@@ -595,6 +757,9 @@ async function ensureGameSchema(env) {
   }
   if (!columns.has("pic2_id")) {
     await env.DB.prepare("ALTER TABLE games ADD COLUMN pic2_id INTEGER").run();
+  }
+  if (!columns.has("gender_mode")) {
+    await env.DB.prepare("ALTER TABLE games ADD COLUMN gender_mode TEXT NOT NULL DEFAULT 'campur'").run();
   }
 
   const cleared = await env.DB.prepare("SELECT value FROM meta WHERE key = ?")

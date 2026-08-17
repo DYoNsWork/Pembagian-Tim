@@ -1,3 +1,5 @@
+import { participantKey } from "./csv.js";
+
 export function shuffle(items, random = Math.random) {
   const result = [...items];
   for (let i = result.length - 1; i > 0; i -= 1) {
@@ -45,9 +47,33 @@ export function eligibleParticipants(participants, { genderMode = "campur", picI
   );
 }
 
+export function partitionByPlayed(pool, playedKeys = new Set()) {
+  const fresh = [];
+  const veterans = [];
+  for (const person of pool) {
+    const key = participantKey(person.nama, person.cabang);
+    if (playedKeys.has(key)) veterans.push(person);
+    else fresh.push(person);
+  }
+  return { fresh, veterans };
+}
+
+export function selectWithPlayPriority(pool, needed, playedKeys = new Set(), random = Math.random) {
+  const { fresh, veterans } = partitionByPlayed(pool, playedKeys);
+  const ordered = [...shuffle(fresh, random), ...shuffle(veterans, random)];
+  return ordered.slice(0, needed);
+}
+
 export function divideTeams(
   participants,
-  { teamCount, membersPerTeam, gameName = "Tim", genderMode = "campur", picIds = [] },
+  {
+    teamCount,
+    membersPerTeam,
+    gameName = "Tim",
+    genderMode = "campur",
+    picIds = [],
+    playedKeys = null,
+  },
   random = Math.random,
 ) {
   const teamsWanted = Number(teamCount);
@@ -75,7 +101,11 @@ export function divideTeams(
     );
   }
 
-  const selected = shuffle(pool, random).slice(0, needed);
+  const played =
+    playedKeys instanceof Set ? playedKeys : playedKeys ? new Set(playedKeys) : new Set();
+  const selected = played.size
+    ? selectWithPlayPriority(pool, needed, played, random)
+    : shuffle(pool, random).slice(0, needed);
   const selectedSet = new Set(selected);
   const leftover = pool.filter((person) => !selectedSet.has(person));
 

@@ -1,6 +1,7 @@
-import { parseParticipantsCsv, summarizeParticipants } from "./csv.js";
+import { formatParticipantLabel, listCabangs, parseParticipantsCsv, sortParticipants, summarizeParticipants } from "./csv.js";
 import { eligibleParticipants, genderModeLabel, normalizeGenderMode } from "./teams.js";
-import { getGame } from "./games.js";
+import { formatPicLine, getGame } from "./games.js";
+import { memberIdFromPerson } from "./draws.js";
 import { api } from "./api.js";
 import {
   RIGHTS,
@@ -8,13 +9,15 @@ import {
   firstAllowedView,
   hasRight,
   rightsForRole,
+  viewForRight,
 } from "./auth.js";
 
 const VIEWS = {
   peserta: { eyebrow: "Peserta", title: "Data peserta" },
+  daftar: { eyebrow: "Daftar", title: "Seluruh peserta" },
+  dashboard: { eyebrow: "Dashboard", title: "Beranda" },
   permainan: { eyebrow: "Permainan", title: "Jenis permainan" },
-  pembagian: { eyebrow: "Pembagian", title: "Bagi grup" },
-  hasil: { eyebrow: "Hasil", title: "Grup permainan" },
+  pembagian: { eyebrow: "Pembagian", title: "Bagi grup & hasil" },
   pengguna: { eyebrow: "Pengguna", title: "Hak akses" },
 };
 
@@ -28,13 +31,17 @@ const resultEmpty = document.querySelector("#result-empty");
 const drawEmpty = document.querySelector("#draw-empty");
 const statsEl = document.querySelector("#stats");
 const rowsEl = document.querySelector("#participant-rows");
-const teamCountInput = document.querySelector("#team-count");
-const membersInput = document.querySelector("#members-per-team");
-const genderModes = document.querySelector("#gender-modes");
-const selectedGameLabel = document.querySelector("#selected-game-label");
+const participantSortSelect = document.querySelector("#participant-sort");
+const directorySortSelect = document.querySelector("#directory-sort");
+const directoryRows = document.querySelector("#directory-rows");
+const directoryCount = document.querySelector("#directory-count");
+const drawInfo = document.querySelector("#draw-info");
+const drawPoolHint = document.querySelector("#draw-pool-hint");
+const drawLockedHint = document.querySelector("#draw-locked-hint");
 const drawGameSelect = document.querySelector("#draw-game");
-const drawReplaceHint = document.querySelector("#draw-replace-hint");
 const drawSubmit = document.querySelector("#draw-submit");
+const reshuffleBtn = document.querySelector("#reshuffle");
+const resetDrawBtn = document.querySelector("#reset-draw");
 const gameGrid = document.querySelector("#game-grid");
 const gamesEmpty = document.querySelector("#games-empty");
 const gameEditor = document.querySelector("#game-editor");
@@ -43,23 +50,28 @@ const gameNameInput = document.querySelector("#game-name");
 const gameTeamCountInput = document.querySelector("#game-team-count");
 const gameMembersInput = document.querySelector("#game-members");
 const gameGroupsPerSessionInput = document.querySelector("#game-groups-per-session");
+const gameGenderModeInput = document.querySelector("#game-gender-mode");
+const gamePic1Cabang = document.querySelector("#game-pic-1-cabang");
+const gamePic2Cabang = document.querySelector("#game-pic-2-cabang");
 const gamePic1Input = document.querySelector("#game-pic-1");
 const gamePic2Input = document.querySelector("#game-pic-2");
 const gameDescriptionInput = document.querySelector("#game-description");
 const participantEditor = document.querySelector("#participant-editor");
 const participantCards = document.querySelector("#participant-cards");
 const gameError = document.querySelector("#game-error");
-const needBox = document.querySelector("#need-box");
 const configForm = document.querySelector("#config-form");
 const configError = document.querySelector("#config-error");
-const teamsEl = document.querySelector("#teams");
-const leftoverEl = document.querySelector("#leftover");
-const bracketEl = document.querySelector("#bracket");
-const resultMeta = document.querySelector("#result-meta");
-const resultTitle = document.querySelector("#result-title");
+const tourneyBoard = document.querySelector("#tourney-board");
+const editTeamsBtn = document.querySelector("#edit-teams");
+const teamEditorPanel = document.querySelector("#team-editor-panel");
+const teamEditorGrid = document.querySelector("#team-editor-grid");
+const teamEditorError = document.querySelector("#team-editor-error");
+const teamEditorSave = document.querySelector("#team-editor-save");
+const teamEditorCancel = document.querySelector("#team-editor-cancel");
 const cloudStatus = document.querySelector("#cloud-status");
-const drawHistory = document.querySelector("#draw-history");
 const clearBtn = document.querySelector("#clear-cloud");
+const dashboardGames = document.querySelector("#dashboard-games");
+const dashboardTop = document.querySelector("#dashboard-top");
 const sidebar = document.querySelector("#sidebar");
 const navBackdrop = document.querySelector("#nav-backdrop");
 const viewEyebrow = document.querySelector("#view-eyebrow");
@@ -77,10 +89,13 @@ let participants = [];
 let games = [];
 let lastResult = null;
 let selectedGameId = "";
-let currentView = "peserta";
+let currentView = "dashboard";
 let draws = [];
 let currentUser = null;
 let users = [];
+let participantSort = "nama-asc";
+let directorySort = "nama-asc";
+let teamEditorOpen = false;
 
 function show(el) {
   el.classList.remove("hidden");
@@ -100,16 +115,19 @@ function selectedGame() {
   return getGame(selectedGameId, games);
 }
 
-function selectedGenderMode() {
-  const checked = genderModes.querySelector("input[name='gender-mode']:checked");
-  return normalizeGenderMode(checked?.value);
+function isAdmin() {
+  return currentUser?.role === "admin";
 }
 
-function poolParticipants() {
-  const game = selectedGame();
+function drawForGame(gameId) {
+  return draws.find((draw) => draw.gameId === gameId);
+}
+
+function poolForGame(game) {
+  if (!game) return [];
   return eligibleParticipants(participants, {
-    genderMode: selectedGenderMode(),
-    picIds: [game?.pic1Id, game?.pic2Id],
+    genderMode: game.genderMode || "campur",
+    picIds: [game.pic1Id, game.pic2Id],
   });
 }
 
@@ -127,46 +145,61 @@ function can(right) {
   return hasRight(currentUser, right);
 }
 
+function canOpenView(name) {
+  if (name === "dashboard") return can("pembagian") || can("hasil") || can("permainan");
+  if (name === "daftar") return can("daftar");
+  const view = viewForRight(name);
+  if (view === "pembagian") return can("pembagian") || can("hasil");
+  return can(view);
+}
+
 function showView(name) {
-  if (!VIEWS[name]) return;
-  if (!can(name)) {
+  const view = viewForRight(name);
+  if (!VIEWS[view]) return;
+  if (!canOpenView(view)) {
     const fallback = firstAllowedView(currentUser);
-    if (fallback && fallback !== name) {
+    if (fallback && fallback !== view) {
       showView(fallback);
     }
     return;
   }
-  currentView = name;
-  document.querySelectorAll(".view").forEach((view) => {
-    view.classList.toggle("hidden", view.id !== `view-${name}`);
+  currentView = view;
+  document.querySelectorAll(".view").forEach((section) => {
+    section.classList.toggle("hidden", section.id !== `view-${view}`);
   });
   document.querySelectorAll("[data-view]").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.view === name);
+    button.classList.toggle("is-active", viewForRight(button.dataset.view) === view);
   });
-  viewEyebrow.textContent = VIEWS[name].eyebrow;
+  viewEyebrow.textContent = VIEWS[view].eyebrow;
   viewTitle.textContent =
-    name === "hasil" && lastResult?.gameName ? lastResult.gameName : VIEWS[name].title;
+    view === "pembagian" && lastResult?.gameName ? lastResult.gameName : VIEWS[view].title;
   closeSidebar();
-  if (name === "pembagian") updateDrawPanel();
-  if (name === "permainan" && !games.length && can("permainan")) openGameEditor();
-  if (name === "pengguna") loadUsers();
+  if (view === "pembagian") {
+    updateDrawPanel();
+    loadDrawForSelectedGame();
+  }
+  if (view === "dashboard") loadDashboard();
+  if (view === "daftar") renderParticipantDirectory(participants);
+  if (view === "permainan" && !games.length && can("permainan")) openGameEditor();
+  if (view === "pengguna") loadUsers();
 }
 
 function applyAccessUi() {
   document.querySelectorAll("[data-view]").forEach((button) => {
-    button.classList.toggle("hidden", !can(button.dataset.view));
+    button.classList.toggle("hidden", !canOpenView(button.dataset.view));
   });
   const name = currentUser?.displayName || currentUser?.username || "Pengguna";
   const role = currentUser?.role || "";
   document.querySelectorAll(".user-chip").forEach((el) => {
     el.textContent = role ? `${name} · ${role}` : name;
   });
-  document.querySelector("#clear-cloud")?.classList.toggle("hidden", !(can("peserta") && participants.length));
+  document.querySelector("#clear-cloud")?.classList.toggle("hidden", !(isAdmin() && participants.length));
   document.querySelector("#add-game")?.classList.toggle("hidden", !can("permainan"));
   document.querySelector("#add-participant")?.classList.toggle("hidden", !can("peserta"));
   document.body.classList.toggle("can-edit-peserta", can("peserta"));
-  document.querySelector("#reshuffle")?.classList.toggle("hidden", !can("pembagian"));
   document.querySelector("#upload-panel")?.classList.toggle("hidden", !can("peserta"));
+  document.querySelector("#draw-panel")?.classList.toggle("hidden", !can("pembagian"));
+  updateDrawPanel();
 }
 
 function selectedRights() {
@@ -184,57 +217,195 @@ function setGames(list, { keepSelection = true } = {}) {
   updateDrawPanel();
 }
 
-function updateGenderCounts() {
-  const game = selectedGame();
-  const picIds = [game?.pic1Id, game?.pic2Id];
-  const campur = eligibleParticipants(participants, { genderMode: "campur", picIds });
-  const laki = eligibleParticipants(participants, { genderMode: "laki-laki", picIds });
-  const perempuan = eligibleParticipants(participants, { genderMode: "perempuan", picIds });
-  document.querySelector("#count-campur").textContent = `${campur.length} peserta`;
-  document.querySelector("#count-laki").textContent = `${laki.length} orang`;
-  document.querySelector("#count-perempuan").textContent = `${perempuan.length} orang`;
-  genderModes.querySelectorAll(".gender-mode").forEach((card) => {
-    const input = card.querySelector("input");
-    card.classList.toggle("is-selected", input?.checked);
-  });
+function renderDrawInfo(game, existingDraw) {
+  if (!game) {
+    hide(drawInfo);
+    drawInfo.innerHTML = "";
+    return;
+  }
+
+  const needed = game.teamCount * game.members;
+  const pool = poolForGame(game);
+  const enough = pool.length >= needed;
+  const firstRoundSessions = Math.max(1, Math.ceil(game.teamCount / game.groupsPerSession));
+  const pic1 = formatPicLine(game.pic1Name, game.pic1Cabang);
+  const pic2 = formatPicLine(game.pic2Name, game.pic2Cabang);
+  const drawDone = Boolean(existingDraw);
+  let drawMeta = "Belum diacak";
+  if (drawDone && lastResult?.gameId === game.id && lastResult?.bracket?.champion) {
+    drawMeta = `Selesai · Juara ${lastResult.bracket.champion.name}`;
+  } else if (drawDone && lastResult?.gameId === game.id) {
+    drawMeta = `Berjalan · ${bracketProgressLabel(lastResult.bracket)}`;
+  } else if (drawDone) {
+    drawMeta = "Sudah diacak";
+  }
+
+  show(drawInfo);
+  drawInfo.innerHTML = `
+    <header class="draw-info-head">
+      <div>
+        <h3>${escapeHtml(game.name)}</h3>
+        ${game.description ? `<p class="draw-info-desc">${escapeHtml(game.description)}</p>` : ""}
+      </div>
+      <span class="draw-info-status${drawDone ? " is-done" : ""}${enough ? "" : " is-warn"}">${escapeHtml(drawMeta)}</span>
+    </header>
+    <dl class="draw-info-grid">
+      <div><dt>Komposisi</dt><dd>${escapeHtml(genderModeLabel(game.genderMode))}</dd></div>
+      <div><dt>Struktur grup</dt><dd>${game.teamCount} grup × ${game.members} org</dd></div>
+      <div><dt>Kebutuhan peserta</dt><dd>${needed} org</dd></div>
+      <div><dt>Grup per sesi</dt><dd>${game.groupsPerSession} tim (${firstRoundSessions} sesi babak awal)</dd></div>
+      <div><dt>Peserta siap</dt><dd class="${enough ? "" : "is-warn"}">${pool.length} / ${needed}</dd></div>
+      <div><dt>PIC</dt><dd>${escapeHtml(pic1 || "—")}<br />${escapeHtml(pic2 || "—")}</dd></div>
+    </dl>`;
+  const hasOtherDraws = draws.some((draw) => draw.gameId && draw.gameId !== game.id);
+  drawPoolHint.textContent = enough
+    ? drawDone
+      ? "Hasil undian dan bagan gugur tampil di bawah."
+      : hasOtherDraws
+        ? "Parameter dari menu Permainan. Peserta yang belum pernah main di permainan lain diprioritaskan saat acak."
+        : "Parameter dari menu Permainan. Klik Acak grup untuk memulai."
+    : `Peserta tidak cukup (${pool.length}/${needed} setelah PIC & exclude).`;
+  drawPoolHint.classList.toggle("is-warn", !enough);
 }
 
-function updateNeed() {
-  const teams = Number(teamCountInput.value);
-  const size = Number(membersInput.value);
-  const needed = teams * size;
-  const pool = poolParticipants();
-  const enough = Number.isInteger(needed) && needed > 0 && pool.length >= needed;
-  const game = selectedGame();
-  const mode = genderModeLabel(selectedGenderMode());
-  const label = game ? `${game.name} · ${mode}` : mode;
-  needBox.innerHTML = `${escapeHtml(label)}: <strong>${needed || 0} orang</strong> dari ${pool.length} peserta`;
-  needBox.classList.toggle("is-short", !enough);
+function bracketProgressLabel(bracket) {
+  if (!bracket?.rounds?.length) return "0% sesi";
+  let total = 0;
+  let done = 0;
+  for (const round of bracket.rounds) {
+    for (const match of round.matches || []) {
+      const teams = (match.teams || []).filter((team) => team && !team.pending);
+      if (teams.length < 1) continue;
+      total += 1;
+      if (match.winnerNumber) done += 1;
+    }
+  }
+  if (!total) return bracket?.champion ? "100% sesi" : "0% sesi";
+  return `${Math.round((done / total) * 100)}% sesi`;
+}
+
+function chartWidth(value, max) {
+  const safeMax = Math.max(1, max);
+  return Math.max(4, Math.round((Number(value) / safeMax) * 100));
+}
+
+function renderGameProgressChart(games) {
+  if (!games.length) {
+    return `<p class="hint">Belum ada permainan.</p>`;
+  }
+  return games
+    .map(
+      (game) => `
+    <div class="chart-row">
+      <div class="chart-label">
+        <strong>${escapeHtml(game.name)}</strong>
+        <small>${dashboardStatusLabel(game.status)}${
+          game.champion ? ` · ${escapeHtml(game.champion)}` : game.hasDraw ? ` · ${game.progress || 0}%` : ""
+        }</small>
+      </div>
+      <div class="chart-track" role="img" aria-label="${escapeHtml(game.name)} ${game.progress || 0}%">
+        <div class="chart-bar is-progress is-${escapeHtml(game.status)}" style="width:${game.progress || 0}%">
+          <span>${game.progress || 0}%</span>
+        </div>
+      </div>
+    </div>`,
+    )
+    .join("");
+}
+
+function renderParticipantChart(people) {
+  if (!people.length) {
+    return `<p class="hint">Belum ada peserta yang ikut permainan.</p>`;
+  }
+  const maxGames = Math.max(1, ...people.map((person) => person.games || 0));
+  const maxWins = Math.max(1, ...people.map((person) => person.wins || 0));
+  return people
+    .map(
+      (person, index) => `
+    <div class="chart-row">
+      <div class="chart-label">
+        <span class="chart-rank">${index + 1}</span>
+        <div>
+          <strong>${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</strong>
+          <small>${person.games || 0} permainan · ${person.wins || 0} juara</small>
+        </div>
+      </div>
+      <div class="chart-track chart-track-dual">
+        <div class="chart-bar is-games" style="width:${chartWidth(person.games, maxGames)}%" title="${person.games || 0} permainan">
+          <span>${person.games || 0}</span>
+        </div>
+        <div class="chart-bar is-wins" style="width:${chartWidth(person.wins, maxWins)}%" title="${person.wins || 0} juara final">
+          <span>${person.wins || 0}</span>
+        </div>
+      </div>
+    </div>`,
+    )
+    .join("");
+}
+
+function renderDrawSummary(game) {
+  renderDrawInfo(game, drawForGame(selectedGameId));
 }
 
 function updateDrawPanel() {
-  updateGenderCounts();
   renderGameSelect();
   const game = selectedGame();
-  const existing = draws.find((draw) => draw.gameId === selectedGameId);
-  selectedGameLabel.textContent = game
-    ? `${game.name}: ${game.teamCount} grup × ${game.members} orang · ${game.groupsPerSession} grup per sesi.${
-        game.pic1Name || game.pic2Name
-          ? ` PIC: ${[game.pic1Name, game.pic2Name].filter(Boolean).join(" & ")}.`
-          : ""
-      }`
-    : "Pilih permainan dari menu tarik-turun.";
-  drawReplaceHint.classList.toggle("hidden", !existing);
-  drawSubmit.textContent = existing ? "Ganti hasil acak" : "Bagi grup secara acak";
-  const ready = Boolean(participants.length && games.length);
-  configForm.classList.toggle("hidden", !ready);
-  drawEmpty.classList.toggle("hidden", ready);
-  if (!ready) {
+  const existing = drawForGame(selectedGameId);
+  renderDrawSummary(game);
+  const ready = Boolean(participants.length && games.length && game);
+  const canDraw = can("pembagian");
+  configForm.classList.toggle("hidden", !canDraw || !ready);
+  drawEmpty.classList.toggle("hidden", !canDraw || ready);
+  if (canDraw && !ready) {
     drawEmpty.textContent = !participants.length
-      ? "Unggah peserta dulu di menu Peserta, lalu kembali ke Pembagian."
-      : "Tambah permainan di menu Permainan, lalu pilih dari menu tarik-turun di Pembagian.";
+      ? "Unggah peserta dulu di menu Peserta."
+      : "Tambah permainan di menu Permainan.";
   }
-  updateNeed();
+  const locked = Boolean(existing);
+  drawSubmit.classList.toggle("hidden", locked);
+  drawLockedHint.classList.toggle("hidden", !locked);
+  reshuffleBtn.classList.toggle("hidden", !locked || !isAdmin());
+  resetDrawBtn.classList.toggle("hidden", !locked || !isAdmin());
+  drawSubmit.disabled = !game || poolForGame(game).length < (game?.teamCount || 0) * (game?.members || 0);
+}
+
+function dashboardStatusLabel(status) {
+  if (status === "selesai") return "Selesai";
+  if (status === "berjalan") return "Berjalan";
+  return "Belum diacak";
+}
+
+async function loadDashboard() {
+  if (!canOpenView("dashboard")) return;
+  try {
+    renderDashboard(await api("/api/dashboard"));
+  } catch (error) {
+    dashboardGames.innerHTML = `<p class="hint">${escapeHtml(error.message)}</p>`;
+    dashboardTop.innerHTML = "";
+  }
+}
+
+function renderDashboard(data) {
+  const gameRows = data?.games || [];
+  dashboardGames.innerHTML = renderGameProgressChart(gameRows);
+  dashboardTop.innerHTML = renderParticipantChart(data?.topParticipants || []);
+}
+
+async function loadDrawForSelectedGame() {
+  const existing = drawForGame(selectedGameId);
+  if (!existing || !(can("pembagian") || can("hasil"))) {
+    lastResult = null;
+    hide(resultPanel);
+    show(resultEmpty);
+    return;
+  }
+  try {
+    renderResult(await api(`/api/draws/${existing.id}`));
+  } catch {
+    lastResult = null;
+    hide(resultPanel);
+    show(resultEmpty);
+  }
 }
 
 function renderGamePicker() {
@@ -253,8 +424,9 @@ function renderGamePicker() {
       <article class="game-card" data-game-id="${escapeHtml(game.id)}">
         <div class="game-card-body">
           <span class="game-card-name">${escapeHtml(game.name)}</span>
-          <span class="game-card-size">${game.teamCount} grup · ${game.members} orang · ${game.groupsPerSession} /sesi</span>
-          <span class="game-card-size">PIC: ${escapeHtml([game.pic1Name, game.pic2Name].filter(Boolean).join(" & ") || "belum dipilih")}</span>
+          <span class="game-card-size">${game.teamCount} grup · ${game.members} org · ${game.groupsPerSession} /sesi · ${escapeHtml(genderModeLabel(game.genderMode))}</span>
+          <span class="game-card-size">PIC 1: ${escapeHtml(formatPicLine(game.pic1Name, game.pic1Cabang) || "belum dipilih")}</span>
+          <span class="game-card-size">PIC 2: ${escapeHtml(formatPicLine(game.pic2Name, game.pic2Cabang) || "belum dipilih")}</span>
           <span class="game-card-desc">${escapeHtml(game.description || "Tidak ada penjelasan.")}</span>
         </div>
         <div class="game-card-actions">
@@ -283,6 +455,7 @@ function applyGame(gameId) {
     selectedGameId = "";
     renderGamePicker();
     updateDrawPanel();
+    loadDrawForSelectedGame();
     return;
   }
   const game = games.find((item) => item.id === gameId);
@@ -290,13 +463,13 @@ function applyGame(gameId) {
     selectedGameId = "";
     renderGamePicker();
     updateDrawPanel();
+    loadDrawForSelectedGame();
     return;
   }
   selectedGameId = game.id;
-  teamCountInput.value = String(game.teamCount);
-  membersInput.value = String(game.members);
   renderGamePicker();
   updateDrawPanel();
+  loadDrawForSelectedGame();
 }
 
 function closeGameEditor() {
@@ -315,6 +488,7 @@ function openGameEditor(game) {
     gameTeamCountInput.value = String(game.teamCount);
     gameMembersInput.value = String(game.members);
     gameGroupsPerSessionInput.value = String(game.groupsPerSession || 2);
+    gameGenderModeInput.value = normalizeGenderMode(game.genderMode);
     fillPicSelects(game.pic1Id, game.pic2Id);
   } else {
     gameEditId.value = "";
@@ -323,27 +497,68 @@ function openGameEditor(game) {
     gameTeamCountInput.value = "";
     gameMembersInput.value = "";
     gameGroupsPerSessionInput.value = "2";
+    gameGenderModeInput.value = "campur";
     fillPicSelects("", "");
   }
   show(gameEditor);
   gameNameInput.focus();
 }
 
-function fillPicSelects(pic1Id, pic2Id) {
-  const options = [
-    `<option value="">Pilih PIC</option>`,
-    ...participants.map(
+function personById(id) {
+  return participants.find((person) => Number(person.id) === Number(id));
+}
+
+function fillPicPair(cabangSelect, personSelect, cabang, personId) {
+  const cabangs = listCabangs(participants);
+  cabangSelect.innerHTML = [
+    `<option value="">Pilih cabang</option>`,
+    ...cabangs.map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`),
+  ].join("");
+  const chosen = cabang && cabangs.includes(cabang) ? cabang : "";
+  cabangSelect.value = chosen;
+  const people = chosen ? participants.filter((person) => person.cabang === chosen) : [];
+  personSelect.innerHTML = [
+    `<option value="">Pilih peserta</option>`,
+    ...people.map(
       (person) =>
-        `<option value="${person.id}">${escapeHtml(person.nama)}${person.nomor ? ` (${escapeHtml(person.nomor)})` : ""}</option>`,
+        `<option value="${person.id}">${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</option>`,
     ),
   ].join("");
-  gamePic1Input.innerHTML = options;
-  gamePic2Input.innerHTML = options;
-  gamePic1Input.value = pic1Id ? String(pic1Id) : "";
-  gamePic2Input.value = pic2Id ? String(pic2Id) : "";
+  personSelect.value =
+    personId && people.some((person) => Number(person.id) === Number(personId)) ? String(personId) : "";
+  personSelect.disabled = !chosen;
+}
+
+function fillPicSelects(pic1Id, pic2Id) {
+  const pic1 = personById(pic1Id);
+  const pic2 = personById(pic2Id);
+  fillPicPair(gamePic1Cabang, gamePic1Input, pic1?.cabang, pic1Id);
+  fillPicPair(gamePic2Cabang, gamePic2Input, pic2?.cabang, pic2Id);
+}
+
+function renderParticipantDirectory(list) {
+  const sorted = sortParticipants(list, directorySort);
+  if (directoryCount) {
+    directoryCount.textContent = sorted.length ? `${sorted.length} peserta` : "Belum ada peserta.";
+  }
+  if (!directoryRows) return;
+  directoryRows.innerHTML = sorted.length
+    ? sorted
+        .map(
+          (person, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(person.nama)}</td>
+          <td>${escapeHtml(person.cabang)}</td>
+          <td>${genderBadge(person.jenisKelamin)}</td>
+        </tr>`,
+        )
+        .join("")
+    : `<tr><td colspan="4" class="empty-cell">Belum ada peserta.</td></tr>`;
 }
 
 function renderParticipants(list) {
+  const sorted = sortParticipants(list, participantSort);
   const summary = summarizeParticipants(list);
   statsEl.innerHTML = [
     ["Total peserta", summary.total],
@@ -357,15 +572,13 @@ function renderParticipants(list) {
     )
     .join("");
 
-  rowsEl.innerHTML = list
+  rowsEl.innerHTML = sorted
     .map(
       (person, index) => `
         <tr class="${person.excluded ? "is-excluded" : ""}">
           <td>${index + 1}</td>
-          <td>${escapeHtml(person.nama)}</td>
-          <td>${escapeHtml(person.nomor || "—")}</td>
+          <td>${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</td>
           <td>${genderBadge(person.jenisKelamin)}</td>
-          <td>${escapeHtml(person.cabang)}</td>
           <td>${person.excluded ? "Tidak ikut" : "Ikut"}</td>
           <td>
             <button type="button" class="text-btn" data-person-action="edit" data-person-id="${person.id}">Ubah</button>
@@ -377,13 +590,13 @@ function renderParticipants(list) {
     )
     .join("");
 
-  participantCards.innerHTML = list
+  participantCards.innerHTML = sorted
     .map(
       (person) => `
         <article class="person-card ${person.excluded ? "is-excluded" : ""}">
           <div>
-            <strong>${escapeHtml(person.nama)}</strong>
-            <span class="user-meta">${escapeHtml(person.nomor || "Tanpa nomor")} · ${genderBadge(person.jenisKelamin)} · ${escapeHtml(person.cabang)}</span>
+            <strong>${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</strong>
+            <span class="user-meta">${genderBadge(person.jenisKelamin)}</span>
             <span class="user-meta">${person.excluded ? "Tidak ikut permainan" : "Ikut undian"}</span>
           </div>
           <div class="game-card-actions">
@@ -417,6 +630,7 @@ function showParticipantData(list, name, { saved = true } = {}) {
   }.`;
   fileName.textContent = name || "Cloudflare D1";
   renderParticipants(list);
+  renderParticipantDirectory(list);
   applyGame(selectedGameId);
   show(dataPanel);
   if (list.length) show(clearBtn);
@@ -445,7 +659,6 @@ function openParticipantEditor(person) {
     document.querySelector("#participant-gender").value =
       person.jenisKelamin === "Perempuan" ? "Perempuan" : "Laki-laki";
     document.querySelector("#participant-cabang").value = person.cabang === "-" ? "" : person.cabang;
-    document.querySelector("#participant-nomor").value = person.nomor || "";
     document.querySelector("#participant-excluded").checked = Boolean(person.excluded);
   } else {
     document.querySelector("#participant-edit-id").value = "";
@@ -467,7 +680,6 @@ function participantPayload() {
     nama: document.querySelector("#participant-name").value,
     jenisKelamin: document.querySelector("#participant-gender").value,
     cabang: document.querySelector("#participant-cabang").value,
-    nomor: document.querySelector("#participant-nomor").value,
     excluded: document.querySelector("#participant-excluded").checked,
   };
 }
@@ -505,7 +717,11 @@ async function toggleExclude(id) {
       body: JSON.stringify({ ...person, excluded: !person.excluded }),
     });
     showParticipantData(saved.participants, "Cloudflare D1");
-    setCloudStatus(person.excluded ? `${person.nama} diikutkan lagi` : `${person.nama} di-exclude dari permainan`);
+    setCloudStatus(
+      person.excluded
+        ? `${formatParticipantLabel(person.nama, person.cabang)} diikutkan lagi`
+        : `${formatParticipantLabel(person.nama, person.cabang)} di-exclude dari permainan`,
+    );
   } catch (error) {
     setCloudStatus(error.message, "warn");
   }
@@ -513,11 +729,11 @@ async function toggleExclude(id) {
 
 async function removeParticipant(id) {
   const person = participants.find((item) => String(item.id) === String(id));
-  if (!person || !confirm(`Hapus peserta “${person.nama}”?`)) return;
+  if (!person || !confirm(`Hapus peserta “${formatParticipantLabel(person.nama, person.cabang)}”?`)) return;
   try {
     const saved = await api(`/api/participants/${id}`, { method: "DELETE" });
     showParticipantData(saved.participants, "Cloudflare D1");
-    setCloudStatus(`Peserta ${person.nama} dihapus`);
+    setCloudStatus(`Peserta ${formatParticipantLabel(person.nama, person.cabang)} dihapus`);
   } catch (error) {
     setCloudStatus(error.message, "warn");
   }
@@ -532,64 +748,16 @@ async function readFile(file) {
 
 function renderResult(result) {
   lastResult = result;
-  const modeLabel = genderModeLabel(result.genderMode);
-  const pool = result.poolSize || result.used;
-  const gameTitle = result.gameName || "Grup permainan";
-  resultTitle.textContent = gameTitle;
-  resultMeta.innerHTML = [
-    `<span class="meta-chip">${escapeHtml(modeLabel)}</span>`,
-    `<span class="meta-chip">${result.teams.length} grup × ${result.teams[0]?.members.length || 0} anggota</span>`,
-    result.groupsPerSession ? `<span class="meta-chip">${result.groupsPerSession} grup per sesi</span>` : "",
-    result.pic1Name || result.pic2Name
-      ? `<span class="meta-chip">PIC: ${escapeHtml([result.pic1Name, result.pic2Name].filter(Boolean).join(" & "))}</span>`
-      : "",
-    `<span class="meta-chip">${result.used} / ${pool} peserta</span>`,
-    result.createdAt ? `<span class="meta-chip muted-chip">${escapeHtml(formatTime(result.createdAt))}</span>` : "",
-  ].join("");
-  renderBracket(result);
-  teamsEl.innerHTML = result.teams
-    .map(
-      (team) => `
-        <article class="team-card">
-          <header>
-            <strong>${escapeHtml(team.name)}</strong>
-            <span>${team.members.length} orang</span>
-          </header>
-          <ol>
-            ${team.members
-              .map(
-                (member) => `
-                  <li>
-                    <strong>${escapeHtml(member.nama)}</strong>
-                    <span class="member-meta">${genderBadge(member.jenisKelamin)} · ${escapeHtml(member.cabang)}</span>
-                  </li>
-                `,
-              )
-              .join("")}
-          </ol>
-        </article>
-      `,
-    )
-    .join("");
-
-  if (result.leftover.length) {
-    leftoverEl.classList.remove("hidden");
-    leftoverEl.innerHTML = `<h3>Cadangan (${result.leftover.length})</h3><p>${result.leftover
-      .map((person) => `${escapeHtml(person.nama)} (${escapeHtml(person.cabang)})`)
-      .join(", ")}</p>`;
+  renderTourneyBoard(result);
+  editTeamsBtn?.classList.toggle("hidden", !isAdmin() || !result?.teams?.length);
+  if (teamEditorOpen && isAdmin()) {
+    renderTeamEditor(result);
   } else {
-    leftoverEl.classList.add("hidden");
-    leftoverEl.innerHTML = "";
+    closeTeamEditor();
   }
 
   if (result.gameId) {
     selectedGameId = games.some((game) => game.id === result.gameId) ? result.gameId : selectedGameId;
-    teamCountInput.value = String(result.teamCount || result.teams.length);
-    membersInput.value = String(
-      result.membersPerTeam || result.teams[0]?.members.length || selectedGame()?.members || 1,
-    );
-    const modeInput = genderModes.querySelector(`input[value="${normalizeGenderMode(result.genderMode)}"]`);
-    if (modeInput) modeInput.checked = true;
     renderGamePicker();
     updateDrawPanel();
   }
@@ -598,93 +766,204 @@ function renderResult(result) {
   hide(resultEmpty);
 }
 
-function formatTime(value) {
-  const date = new Date(`${value}Z`);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("id-ID");
+function renderCompactSlot(slot, match) {
+  const winner = match.winnerNumber === slot.number;
+  if (can("hasil") && !slot.pending) {
+    return `<button type="button" class="session-slot team-pick${winner ? " is-winner" : ""}" data-match-id="${escapeHtml(match.id)}" data-winner="${slot.number}">${escapeHtml(slot.name)}</button>`;
+  }
+  return `<div class="session-slot${winner ? " is-winner" : ""}">${escapeHtml(slot.name)}</div>`;
 }
 
-function renderBracket(result) {
+function renderSessionTeamCard(team, match) {
+  const winner = match.winnerNumber === team.number;
+  const title = can("hasil")
+    ? `<button type="button" class="team-pick${winner ? " is-winner" : ""}" data-match-id="${escapeHtml(match.id)}" data-winner="${team.number}">${escapeHtml(team.name)}</button>`
+    : `<strong>${escapeHtml(team.name)}</strong>`;
+  return `
+    <article class="session-team${winner ? " is-winner" : ""}">
+      <header>${title}<span>${team.members.length} org</span></header>
+      <ol class="team-roster">
+        ${team.members
+          .map(
+            (member) =>
+              `<li><span>${escapeHtml(formatParticipantLabel(member.nama, member.cabang))}</span><small>${genderBadge(member.jenisKelamin)}</small></li>`,
+          )
+          .join("")}
+      </ol>
+    </article>`;
+}
+
+function renderTourneyBoard(result) {
   const bracket = result?.bracket;
+  const teamsMap = new Map((result?.teams || []).map((team) => [team.number, team]));
+
   if (!bracket?.rounds?.length) {
-    hide(bracketEl);
-    bracketEl.innerHTML = "";
+    tourneyBoard.innerHTML = (result?.teams || [])
+      .map(
+        (team) => `
+          <article class="session-team">
+            <header><strong>${escapeHtml(team.name)}</strong><span>${team.members.length} org</span></header>
+            <ol class="team-roster">
+              ${team.members
+                .map(
+                  (member) =>
+                    `<li><span>${escapeHtml(formatParticipantLabel(member.nama, member.cabang))}</span><small>${genderBadge(member.jenisKelamin)}</small></li>`,
+                )
+                .join("")}
+            </ol>
+          </article>`,
+      )
+      .join("");
     return;
   }
 
-  const k = bracket.groupsPerSession || result.groupsPerSession || 2;
   const champion = bracket.champion;
-  const gameTitle = result.gameName || "Pertandingan";
-  bracketEl.innerHTML = `
-    <div class="bracket-head">
-      <div>
-        <p class="eyebrow">Bagan sistem gugur</p>
-        <h3>${escapeHtml(gameTitle)}</h3>
-        <p>${k} grup per sesi. Klik pemenang agar maju ke babak berikutnya.</p>
-      </div>
-      ${
-        champion
-          ? `<div class="bracket-champion"><span>Juara</span><strong>${escapeHtml(champion.name)}</strong></div>`
-          : ""
-      }
-    </div>
-    <div class="bracket-board">
-      <div class="bracket-rounds">
-        ${bracket.rounds
-          .map(
-            (round) => `
-              <section class="bracket-round">
-                <h4>${escapeHtml(round.name)}</h4>
-                <div class="bracket-round-matches">
-                  ${(round.matches || [])
-                    .map(
-                      (match) => `
-                        <article class="bracket-match${match.winnerNumber ? " has-winner" : ""}">
-                          <p class="bracket-session">Sesi ${match.session}</p>
-                          <div class="bracket-teams">
-                            ${bracketTeamsHtml(match)}
-                          </div>
-                        </article>
-                      `,
-                    )
-                    .join("")}
-                  ${
-                    round.byeTeams?.length
-                      ? `<p class="bracket-bye">Lolos otomatis: ${round.byeTeams
-                          .map((team) => escapeHtml(team.name))
-                          .join(", ")}</p>`
-                      : ""
-                  }
-                </div>
-              </section>
-            `,
-          )
-          .join("")}
-      </div>
-    </div>
-  `;
-  show(bracketEl);
+  let html = champion
+    ? `<div class="tourney-champion"><span>Juara</span><strong>${escapeHtml(champion.name)}</strong></div>`
+    : "";
+
+  html += `<div class="tourney-flow">`;
+  bracket.rounds.forEach((round, roundIndex) => {
+    const showRoster = roundIndex === 0;
+    html += `<section class="tourney-round">
+      <h3 class="tourney-round-title">${escapeHtml(round.name)}</h3>
+      <div class="tourney-sessions">`;
+
+    for (const match of round.matches || []) {
+      const done = Boolean(match.winnerNumber);
+      html += `<article class="session-card${done ? " is-done" : ""}">
+        <header class="session-head">
+          <span class="session-label">Sesi ${match.session}</span>
+          ${done ? `<span class="session-badge">Selesai</span>` : ""}
+        </header>
+        <div class="session-body${showRoster ? "" : " is-compact"}">`;
+
+      const slots = match.teams || [];
+      slots.forEach((slot, index) => {
+        if (index > 0 && slots.length === 2) html += `<span class="session-vs">vs</span>`;
+        if (!slot || slot.pending) {
+          html += `<div class="session-slot is-pending">${escapeHtml(slot?.label || "Menunggu")}</div>`;
+        } else if (showRoster) {
+          const full = teamsMap.get(slot.number);
+          html += full ? renderSessionTeamCard(full, match) : renderCompactSlot(slot, match);
+        } else {
+          html += renderCompactSlot(slot, match);
+        }
+      });
+
+      html += `</div></article>`;
+    }
+
+    if (round.byeTeams?.length) {
+      html += `<p class="session-bye">Lolos otomatis: ${round.byeTeams.map((team) => escapeHtml(team.name)).join(", ")}</p>`;
+    }
+
+    html += `</div></section>`;
+    if (roundIndex < bracket.rounds.length - 1) {
+      html += `<div class="tourney-connector" aria-hidden="true">↓</div>`;
+    }
+  });
+  html += `</div>`;
+  tourneyBoard.innerHTML = html;
 }
 
-function bracketTeamsHtml(match) {
-  const teams = match.teams || [];
-  return teams
-    .map((team, index) => {
-      const slot = bracketSlot(team, match);
-      if (teams.length === 2 && index === 0) {
-        return `${slot}<span class="bracket-vs" aria-hidden="true">VS</span>`;
-      }
-      return slot;
+function closeTeamEditor(resetOpen = true) {
+  if (resetOpen) teamEditorOpen = false;
+  hide(teamEditorPanel);
+  hide(teamEditorError);
+  if (teamEditorGrid) teamEditorGrid.innerHTML = "";
+}
+
+function openTeamEditor() {
+  if (!lastResult || !isAdmin()) return;
+  teamEditorOpen = true;
+  show(teamEditorPanel);
+  hide(teamEditorError);
+  renderTeamEditor(lastResult);
+}
+
+function renderTeamEditor(result) {
+  const game = getGame(result.gameId, games);
+  if (!game || !teamEditorGrid) return;
+  const pool = poolForGame(game);
+  const size = Number(result.membersPerTeam) || game.members;
+
+  teamEditorGrid.innerHTML = (result.teams || [])
+    .map((team) => {
+      const slots = Array.from({ length: size }, (_, index) => {
+        const currentId = memberIdFromPerson(participants, team.members[index]) || "";
+        const options = pool
+          .map(
+            (person) =>
+              `<option value="${person.id}"${String(person.id) === String(currentId) ? " selected" : ""}>${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</option>`,
+          )
+          .join("");
+        return `
+          <label>
+            Anggota ${index + 1}
+            <select data-team-number="${team.number}" required>
+              <option value="">Pilih peserta</option>
+              ${options}
+            </select>
+          </label>`;
+      }).join("");
+
+      return `
+        <article class="team-edit-card">
+          <h3>${escapeHtml(team.name)}</h3>
+          <div class="team-edit-slots">${slots}</div>
+        </article>`;
     })
     .join("");
 }
 
-function bracketSlot(team, match) {
-  if (!team || team.pending) {
-    return `<span class="bracket-slot is-pending">${escapeHtml(team?.label || "Menunggu pemenang")}</span>`;
+function collectTeamEditorPayload() {
+  const teams = (lastResult?.teams || []).map((team) => ({
+    number: team.number,
+    memberIds: [...teamEditorGrid.querySelectorAll(`select[data-team-number="${team.number}"]`)].map(
+      (select) => Number(select.value),
+    ),
+  }));
+  return teams;
+}
+
+function validateTeamEditorPayload(teams) {
+  const ids = teams.flatMap((team) => team.memberIds);
+  if (ids.some((id) => !id)) {
+    return "Semua slot anggota wajib diisi.";
   }
-  const winner = match.winnerNumber === team.number;
-  return `<button type="button" class="bracket-slot${winner ? " is-winner" : ""}" data-match-id="${escapeHtml(match.id)}" data-winner="${team.number}">${escapeHtml(team.name)}</button>`;
+  if (new Set(ids).size !== ids.length) {
+    return "Satu peserta tidak boleh masuk lebih dari satu tim.";
+  }
+  return "";
+}
+
+async function saveTeamEditor() {
+  if (!lastResult?.id || !isAdmin()) return;
+  hide(teamEditorError);
+  const teams = collectTeamEditorPayload();
+  const message = validateTeamEditorPayload(teams);
+  if (message) {
+    teamEditorError.textContent = message;
+    show(teamEditorError);
+    return;
+  }
+  if (!confirm("Simpan perubahan komposisi tim?")) return;
+  try {
+    const updated = await api(`/api/draws/${lastResult.id}/teams`, {
+      method: "PUT",
+      body: JSON.stringify({ teams }),
+    });
+    teamEditorOpen = false;
+    closeTeamEditor();
+    renderResult(updated);
+    setCloudStatus(`Komposisi tim ${updated.gameName || "permainan"} diperbarui`);
+    if (canOpenView("dashboard")) await loadDashboard();
+  } catch (error) {
+    teamEditorError.textContent = error.message;
+    show(teamEditorError);
+    setCloudStatus(error.message, "warn");
+  }
 }
 
 function gamePayload() {
@@ -694,6 +973,7 @@ function gamePayload() {
     teamCount: Number(gameTeamCountInput.value),
     members: Number(gameMembersInput.value),
     groupsPerSession: Number(gameGroupsPerSessionInput.value),
+    genderMode: gameGenderModeInput.value,
     pic1Id: Number(gamePic1Input.value) || null,
     pic2Id: Number(gamePic2Input.value) || null,
   };
@@ -747,30 +1027,20 @@ async function removeGame(id) {
 async function refreshDrawHistory(selectedId) {
   const data = await api("/api/draws");
   draws = data.draws || [];
-  if (!draws.length) {
-    hide(drawHistory);
-    drawHistory.innerHTML = "";
-    updateDrawPanel();
-    return;
-  }
-
-  drawHistory.innerHTML = `
-    <option value="">Pilih permainan</option>
-    ${draws
-      .map(
-        (draw) =>
-          `<option value="${draw.id}" ${String(draw.id) === String(selectedId) ? "selected" : ""}>${escapeHtml(draw.gameName || "Permainan")} · ${escapeHtml(genderModeLabel(draw.genderMode))} · ${draw.teamCount}×${draw.membersPerTeam}</option>`,
-      )
-      .join("")}
-  `;
-  show(drawHistory);
   updateDrawPanel();
+  if (selectedId) {
+    const draw = draws.find((item) => String(item.id) === String(selectedId));
+    if (draw?.gameId) selectedGameId = draw.gameId;
+    renderGameSelect();
+  }
+  loadDashboard();
 }
 
-async function runDraw({ confirmReplace = true } = {}) {
+async function runDraw({ replace = false } = {}) {
   hide(configError);
-  if (!selectedGame()) {
-    configError.textContent = "Pilih permainan dari menu tarik-turun.";
+  const game = selectedGame();
+  if (!game) {
+    configError.textContent = "Pilih permainan.";
     show(configError);
     return;
   }
@@ -780,31 +1050,36 @@ async function runDraw({ confirmReplace = true } = {}) {
     showView("peserta");
     return;
   }
-  const existing = draws.find((draw) => draw.gameId === selectedGameId);
-  if (confirmReplace && existing) {
-    if (!confirm(`Sudah ada hasil untuk “${selectedGame().name}”. Ganti dengan acakan baru?`)) {
-      return;
-    }
+  const existing = drawForGame(selectedGameId);
+  if (existing && !replace) {
+    configError.textContent = "Hasil acak sudah ada. Hanya admin yang bisa mengacak ulang.";
+    show(configError);
+    return;
+  }
+  if (replace && !isAdmin()) {
+    configError.textContent = "Hanya admin yang bisa mengacak ulang.";
+    show(configError);
+    return;
+  }
+  if (replace && !confirm(`Acak ulang grup untuk “${game.name}”? Hasil lama akan diganti.`)) {
+    return;
   }
   try {
     const result = await api("/api/draws", {
       method: "POST",
       body: JSON.stringify({
-        teamCount: Number(teamCountInput.value),
-        membersPerTeam: Number(membersInput.value),
         gameId: selectedGameId,
-        genderMode: selectedGenderMode(),
-        groupsPerSession: selectedGame().groupsPerSession,
+        replace,
       }),
     });
     renderResult(result);
     setCloudStatus(
       result.replaced
         ? `Hasil ${result.gameName} diganti dengan acakan baru`
-        : `Grup ${result.gameName} tersimpan di Cloudflare D1`,
+        : `Grup ${result.gameName} tersimpan`,
     );
     await refreshDrawHistory(result.id);
-    showView("hasil");
+    showView("pembagian");
   } catch (error) {
     configError.textContent = error.message;
     show(configError);
@@ -821,7 +1096,7 @@ async function loadFromCloud() {
     if (can("permainan") || can("pembagian") || can("hasil")) {
       await loadGamesFromCloud();
     }
-    if (can("peserta") || can("permainan") || can("pembagian")) {
+    if (can("peserta") || can("permainan") || can("pembagian") || can("daftar")) {
       const data = await api("/api/participants");
       if (data.participants.length) {
         showParticipantData(data.participants, data.filename || "Cloudflare D1");
@@ -840,11 +1115,15 @@ async function loadFromCloud() {
     if (can("pembagian") || can("hasil")) {
       const { draws: history } = await api("/api/draws");
       await refreshDrawHistory(history[0]?.id);
-      if (history[0]) {
-        const latest = await api(`/api/draws/${history[0].id}`);
-        renderResult(latest);
+      if (selectedGameId && drawForGame(selectedGameId)) {
+        await loadDrawForSelectedGame();
+      } else if (history[0]) {
+        selectedGameId = history[0].gameId || selectedGameId;
+        renderGameSelect();
+        await loadDrawForSelectedGame();
       }
     }
+    if (canOpenView("dashboard")) await loadDashboard();
     applyAccessUi();
   } catch (error) {
     if (error.status === 401) {
@@ -989,7 +1268,7 @@ async function enterApp(user, defaultView) {
   show(appShell);
   applyAccessUi();
   await loadFromCloud();
-  showView(defaultView || firstAllowedView(currentUser) || "peserta");
+  showView(defaultView || firstAllowedView(currentUser) || "dashboard");
 }
 
 async function boot() {
@@ -1058,22 +1337,69 @@ gameGrid.addEventListener("click", (event) => {
 document.querySelector("#add-game").addEventListener("click", () => openGameEditor());
 document.querySelector("#game-cancel").addEventListener("click", closeGameEditor);
 gameEditor.addEventListener("submit", saveGame);
+gamePic1Cabang.addEventListener("change", () => {
+  fillPicPair(gamePic1Cabang, gamePic1Input, gamePic1Cabang.value, "");
+});
+gamePic2Cabang.addEventListener("change", () => {
+  fillPicPair(gamePic2Cabang, gamePic2Input, gamePic2Cabang.value, "");
+});
 
-genderModes.addEventListener("change", updateDrawPanel);
 drawGameSelect.addEventListener("change", () => {
   applyGame(drawGameSelect.value);
 });
-teamCountInput.addEventListener("input", updateNeed);
-membersInput.addEventListener("input", updateNeed);
+
+participantSortSelect.addEventListener("change", () => {
+  participantSort = participantSortSelect.value;
+  renderParticipants(participants);
+});
+
+directorySortSelect?.addEventListener("change", () => {
+  directorySort = directorySortSelect.value;
+  renderParticipantDirectory(participants);
+});
 
 configForm.addEventListener("submit", (event) => {
   event.preventDefault();
   runDraw();
 });
 
-document.querySelector("#reshuffle").addEventListener("click", () => {
-  runDraw({ confirmReplace: false });
+reshuffleBtn.addEventListener("click", () => {
+  runDraw({ replace: true });
 });
+
+resetDrawBtn.addEventListener("click", () => {
+  resetDrawDivision();
+});
+
+async function resetDrawDivision() {
+  hide(configError);
+  const game = selectedGame();
+  const existing = drawForGame(selectedGameId);
+  if (!game || !existing || !isAdmin()) return;
+  if (
+    !confirm(
+      `Reset pembagian “${game.name}”?\n\nSemua tim, bagan gugur, dan progress akan dihapus. Anda bisa mengacak ulang dari awal.`,
+    )
+  ) {
+    return;
+  }
+  try {
+    await api(`/api/draws/${existing.id}`, { method: "DELETE" });
+    lastResult = null;
+    closeTeamEditor();
+    hide(resultPanel);
+    show(resultEmpty);
+    tourneyBoard.innerHTML = "";
+    await refreshDrawHistory();
+    updateDrawPanel();
+    setCloudStatus(`Pembagian ${game.name} direset`, "muted");
+    if (canOpenView("dashboard")) await loadDashboard();
+  } catch (error) {
+    configError.textContent = error.message;
+    show(configError);
+    setCloudStatus(error.message, "warn");
+  }
+}
 
 document.querySelector("#add-participant").addEventListener("click", () => openParticipantEditor());
 document.querySelector("#participant-cancel").addEventListener("click", closeParticipantEditor);
@@ -1088,9 +1414,19 @@ dataPanel.addEventListener("click", (event) => {
   if (button.dataset.personAction === "delete") removeParticipant(id);
 });
 
-bracketEl.addEventListener("click", async (event) => {
+editTeamsBtn?.addEventListener("click", openTeamEditor);
+teamEditorCancel?.addEventListener("click", () => closeTeamEditor());
+teamEditorSave?.addEventListener("click", saveTeamEditor);
+
+tourneyBoard.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-match-id]");
   if (!(button instanceof HTMLButtonElement) || !lastResult?.id) return;
+  const teamName = button.textContent?.trim() || "tim ini";
+  const isWinner = button.classList.contains("is-winner");
+  const message = isWinner
+    ? `Batalkan pemenang "${teamName}"?`
+    : `Jadikan "${teamName}" pemenang sesi ini?`;
+  if (!confirm(message)) return;
   try {
     const updated = await api(`/api/draws/${lastResult.id}`, {
       method: "PUT",
@@ -1105,22 +1441,9 @@ bracketEl.addEventListener("click", async (event) => {
         ? `Juara: ${updated.bracket.champion.name}`
         : "Pemenang sesi disimpan",
     );
+    loadDashboard();
   } catch (error) {
     setCloudStatus(error.message, "warn");
-  }
-});
-
-drawHistory.addEventListener("change", async () => {
-  const id = drawHistory.value;
-  if (!id) return;
-  try {
-    const draw = await api(`/api/draws/${id}`);
-    renderResult(draw);
-    showView("hasil");
-  } catch (error) {
-    configError.textContent = error.message;
-    show(configError);
-    showView("pembagian");
   }
 });
 
@@ -1133,10 +1456,11 @@ clearBtn.addEventListener("click", async () => {
     draws = [];
     hide(resultPanel);
     show(resultEmpty);
-    hide(drawHistory);
     showParticipantData([], "");
     fileStatus.textContent = "Data Cloudflare D1 sudah dikosongkan.";
     setCloudStatus("Peserta dan undian dihapus. Jenis permainan tetap ada.", "muted");
+    updateDrawPanel();
+    loadDashboard();
     showView("peserta");
   } catch (error) {
     setCloudStatus(error.message, "warn");
