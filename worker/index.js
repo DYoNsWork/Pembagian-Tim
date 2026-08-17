@@ -1,5 +1,5 @@
-import { divideTeams, normalizeGenderMode } from "../src/teams.js";
-import { chunk, extraDrawIds, groupDrawMembers, normalizeParticipant, personFromRow } from "../src/draws.js";
+import { divideTeams, eligibleParticipants, normalizeGenderMode } from "../src/teams.js";
+import { chunk, extraDrawIds, groupDrawMembers, normalizeParticipant, normalizeTeamComposition, personFromRow } from "../src/draws.js";
 import { gameProgressRows, participantLeaderboard } from "../src/dashboard.js";
 import { findDuplicateParticipantKeys, formatParticipantLabel, participantKey } from "../src/csv.js";
 import {
@@ -186,6 +186,13 @@ async function handleApi(request, env, url) {
   if (drawMatch && request.method === "DELETE") {
     requireAdmin(user);
     return json(await resetDraw(env, Number(drawMatch[1])));
+  }
+
+  const drawTeamsMatch = path.match(/^\/api\/draws\/(\d+)\/teams$/);
+  if (drawTeamsMatch && request.method === "PUT") {
+    requireAdmin(user);
+    const body = await readJson(request);
+    return json(await updateDrawTeams(env, Number(drawTeamsMatch[1]), body));
   }
 
   return json({ error: "Endpoint tidak ditemukan." }, 404);
@@ -589,6 +596,67 @@ async function getDraw(env, id) {
     needed: draw.team_count * draw.members_per_team,
     ...grouped,
   };
+}
+
+async function updateDrawTeams(env, id, body) {
+  const draw = await getDraw(env, id);
+  if (!draw) {
+    throw Object.assign(new Error("Hasil undian tidak ditemukan."), { status: 404 });
+  }
+
+  const games = await listGames(env);
+  const game = games.find((item) => item.id === draw.gameId);
+  if (!game) {
+    throw Object.assign(new Error("Permainan untuk undian ini tidak ditemukan."), { status: 400 });
+  }
+
+  const stored = await listParticipants(env);
+  const eligible = eligibleParticipants(stored.participants, {
+    genderMode: draw.genderMode,
+    picIds: [game.pic1Id, game.pic2Id],
+  });
+  const eligibleById = new Map(eligible.map((person) => [Number(person.id), person]));
+
+  const { teams, leftover } = normalizeTeamComposition(body?.teams, {
+    teamCount: draw.teamCount,
+    membersPerTeam: draw.membersPerTeam,
+    eligibleById,
+  });
+
+  await env.DB.prepare("DELETE FROM draw_members WHERE draw_id = ?").bind(id).run();
+
+  const memberStmt = env.DB.prepare(
+    "INSERT INTO draw_members (draw_id, team_number, team_name, nama, jenis_kelamin, cabang) VALUES (?, ?, ?, ?, ?, ?)",
+  );
+  const rows = [];
+
+  for (const team of teams) {
+    for (const member of team.members) {
+      rows.push(
+        memberStmt.bind(
+          id,
+          team.number,
+          team.name,
+          member.nama,
+          member.jenisKelamin,
+          member.cabang,
+        ),
+      );
+    }
+  }
+
+  for (const member of leftover) {
+    rows.push(
+      memberStmt.bind(id, 0, "Cadangan", member.nama, member.jenisKelamin, member.cabang),
+    );
+  }
+
+  for (const group of chunk(rows, INSERT_CHUNK)) {
+    await env.DB.batch(group);
+  }
+
+  console.log("draw_teams_updated", { id, teams: teams.length, leftover: leftover.length });
+  return getDraw(env, id);
 }
 
 async function updateDrawBracket(env, id, body) {

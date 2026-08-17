@@ -365,6 +365,22 @@
               </form>
             </section>
             <section class="panel hidden" id="result-panel">
+              <div class="panel-head result-toolbar">
+                <h2>Hasil acakan</h2>
+                <button type="button" class="secondary hidden" id="edit-teams">Edit komposisi tim</button>
+              </div>
+              <section class="panel team-editor-panel hidden" id="team-editor-panel">
+                <div class="panel-head">
+                  <h3>Ubah anggota tim</h3>
+                  <div class="draw-actions">
+                    <button type="button" class="primary" id="team-editor-save">Simpan</button>
+                    <button type="button" class="secondary" id="team-editor-cancel">Batal</button>
+                  </div>
+                </div>
+                <p class="hint">Pilih peserta untuk setiap slot. Satu peserta hanya boleh di satu tim.</p>
+                <p class="error hidden" id="team-editor-error"></p>
+                <div class="team-editor-grid" id="team-editor-grid"></div>
+              </section>
               <div id="tourney-board" class="tourney-board"></div>
             </section>
             <p class="empty-games" id="result-empty">Belum ada hasil. Bagi grup di atas untuk melihat daftar tim dan bagan gugur.</p>

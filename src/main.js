@@ -1,6 +1,7 @@
 import { formatParticipantLabel, listCabangs, parseParticipantsCsv, sortParticipants, summarizeParticipants } from "./csv.js";
 import { eligibleParticipants, genderModeLabel, normalizeGenderMode } from "./teams.js";
 import { formatPicLine, getGame } from "./games.js";
+import { memberIdFromPerson } from "./draws.js";
 import { api } from "./api.js";
 import {
   RIGHTS,
@@ -61,6 +62,12 @@ const gameError = document.querySelector("#game-error");
 const configForm = document.querySelector("#config-form");
 const configError = document.querySelector("#config-error");
 const tourneyBoard = document.querySelector("#tourney-board");
+const editTeamsBtn = document.querySelector("#edit-teams");
+const teamEditorPanel = document.querySelector("#team-editor-panel");
+const teamEditorGrid = document.querySelector("#team-editor-grid");
+const teamEditorError = document.querySelector("#team-editor-error");
+const teamEditorSave = document.querySelector("#team-editor-save");
+const teamEditorCancel = document.querySelector("#team-editor-cancel");
 const cloudStatus = document.querySelector("#cloud-status");
 const clearBtn = document.querySelector("#clear-cloud");
 const dashboardGames = document.querySelector("#dashboard-games");
@@ -88,6 +95,7 @@ let currentUser = null;
 let users = [];
 let participantSort = "nama-asc";
 let directorySort = "nama-asc";
+let teamEditorOpen = false;
 
 function show(el) {
   el.classList.remove("hidden");
@@ -738,6 +746,12 @@ async function readFile(file) {
 function renderResult(result) {
   lastResult = result;
   renderTourneyBoard(result);
+  editTeamsBtn?.classList.toggle("hidden", !isAdmin() || !result?.teams?.length);
+  if (teamEditorOpen && isAdmin()) {
+    renderTeamEditor(result);
+  } else {
+    closeTeamEditor();
+  }
 
   if (result.gameId) {
     selectedGameId = games.some((game) => game.id === result.gameId) ? result.gameId : selectedGameId;
@@ -848,6 +862,105 @@ function renderTourneyBoard(result) {
   });
   html += `</div>`;
   tourneyBoard.innerHTML = html;
+}
+
+function closeTeamEditor(resetOpen = true) {
+  if (resetOpen) teamEditorOpen = false;
+  hide(teamEditorPanel);
+  hide(teamEditorError);
+  if (teamEditorGrid) teamEditorGrid.innerHTML = "";
+}
+
+function openTeamEditor() {
+  if (!lastResult || !isAdmin()) return;
+  teamEditorOpen = true;
+  show(teamEditorPanel);
+  hide(teamEditorError);
+  renderTeamEditor(lastResult);
+}
+
+function renderTeamEditor(result) {
+  const game = getGame(result.gameId, games);
+  if (!game || !teamEditorGrid) return;
+  const pool = poolForGame(game);
+  const size = Number(result.membersPerTeam) || game.members;
+
+  teamEditorGrid.innerHTML = (result.teams || [])
+    .map((team) => {
+      const slots = Array.from({ length: size }, (_, index) => {
+        const currentId = memberIdFromPerson(participants, team.members[index]) || "";
+        const options = pool
+          .map(
+            (person) =>
+              `<option value="${person.id}"${String(person.id) === String(currentId) ? " selected" : ""}>${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</option>`,
+          )
+          .join("");
+        return `
+          <label>
+            Anggota ${index + 1}
+            <select data-team-number="${team.number}" required>
+              <option value="">Pilih peserta</option>
+              ${options}
+            </select>
+          </label>`;
+      }).join("");
+
+      return `
+        <article class="team-edit-card">
+          <h3>${escapeHtml(team.name)}</h3>
+          <div class="team-edit-slots">${slots}</div>
+        </article>`;
+    })
+    .join("");
+}
+
+function collectTeamEditorPayload() {
+  const teams = (lastResult?.teams || []).map((team) => ({
+    number: team.number,
+    memberIds: [...teamEditorGrid.querySelectorAll(`select[data-team-number="${team.number}"]`)].map(
+      (select) => Number(select.value),
+    ),
+  }));
+  return teams;
+}
+
+function validateTeamEditorPayload(teams) {
+  const ids = teams.flatMap((team) => team.memberIds);
+  if (ids.some((id) => !id)) {
+    return "Semua slot anggota wajib diisi.";
+  }
+  if (new Set(ids).size !== ids.length) {
+    return "Satu peserta tidak boleh masuk lebih dari satu tim.";
+  }
+  return "";
+}
+
+async function saveTeamEditor() {
+  if (!lastResult?.id || !isAdmin()) return;
+  hide(teamEditorError);
+  const teams = collectTeamEditorPayload();
+  const message = validateTeamEditorPayload(teams);
+  if (message) {
+    teamEditorError.textContent = message;
+    show(teamEditorError);
+    return;
+  }
+  if (!confirm("Simpan perubahan komposisi tim?")) return;
+  try {
+    const updated = await api(`/api/draws/${lastResult.id}/teams`, {
+      method: "PUT",
+      body: JSON.stringify({ teams }),
+    });
+    teamEditorOpen = false;
+    closeTeamEditor();
+    renderResult(updated);
+    setCloudStatus(`Komposisi tim ${updated.gameName || "permainan"} diperbarui`);
+    if (canOpenView("dashboard")) await loadDashboard();
+  } catch (error) {
+    teamEditorError.textContent = error.message;
+    show(teamEditorError);
+    setCloudStatus(error.message, "warn");
+  }
 }
 
 function gamePayload() {
@@ -1296,6 +1409,10 @@ dataPanel.addEventListener("click", (event) => {
   if (button.dataset.personAction === "exclude") toggleExclude(id);
   if (button.dataset.personAction === "delete") removeParticipant(id);
 });
+
+editTeamsBtn?.addEventListener("click", openTeamEditor);
+teamEditorCancel?.addEventListener("click", () => closeTeamEditor());
+teamEditorSave?.addEventListener("click", saveTeamEditor);
 
 tourneyBoard.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-match-id]");

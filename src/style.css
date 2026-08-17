@@ -566,6 +566,58 @@ tbody tr:hover {
   gap: 8px;
 }
 
+.result-toolbar {
+  margin-bottom: 12px;
+}
+
+.team-editor-panel {
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 14px;
+  background: rgba(91, 124, 255, 0.04);
+}
+
+.team-editor-panel .panel-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.team-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.team-edit-card {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card-2);
+}
+
+.team-edit-card h3 {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+
+.team-edit-slots {
+  display: grid;
+  gap: 8px;
+}
+
+.team-edit-slots label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.team-edit-slots select {
+  width: 100%;
+  max-width: none;
+}
+
 .param-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

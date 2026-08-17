@@ -1,5 +1,44 @@
 import { describe, expect, it } from "vitest";
-import { chunk, extraDrawIds, groupDrawMembers, normalizeParticipant, personFromRow } from "./draws.js";
+import { chunk, extraDrawIds, groupDrawMembers, memberIdFromPerson, normalizeParticipant, normalizeTeamComposition, personFromRow } from "./draws.js";
+
+describe("normalizeTeamComposition", () => {
+  const eligible = new Map([
+    [1, { id: 1, nama: "Andi", jenisKelamin: "Laki-laki", cabang: "Jakarta" }],
+    [2, { id: 2, nama: "Budi", jenisKelamin: "Laki-laki", cabang: "Bandung" }],
+    [3, { id: 3, nama: "Siti", jenisKelamin: "Perempuan", cabang: "Medan" }],
+    [4, { id: 4, nama: "Rina", jenisKelamin: "Perempuan", cabang: "Solo" }],
+  ]);
+
+  it("memvalidasi jumlah anggota dan duplikat", () => {
+    expect(
+      normalizeTeamComposition(
+        [
+          { number: 1, memberIds: [1, 2] },
+          { number: 2, memberIds: [3, 4] },
+        ],
+        { teamCount: 2, membersPerTeam: 2, eligibleById: eligible },
+      ).teams.map((team) => team.members.map((member) => member.nama)),
+    ).toEqual([
+      ["Andi", "Budi"],
+      ["Siti", "Rina"],
+    ]);
+
+    expect(() =>
+      normalizeTeamComposition([{ number: 1, memberIds: [1, 1] }], {
+        teamCount: 1,
+        membersPerTeam: 2,
+        eligibleById: eligible,
+      }),
+    ).toThrow(/tidak boleh/i);
+  });
+});
+
+describe("memberIdFromPerson", () => {
+  it("mencocokkan anggota tim ke id peserta", () => {
+    const list = [{ id: 7, nama: "Putri", cabang: "Botania", jenisKelamin: "Perempuan" }];
+    expect(memberIdFromPerson(list, { nama: "Putri", cabang: "Botania" })).toBe(7);
+  });
+});
 
 describe("groupDrawMembers", () => {
   it("mengelompokkan anggota tim dan cadangan", () => {
