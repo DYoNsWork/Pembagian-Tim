@@ -54,7 +54,7 @@ describe("participationCounts", () => {
 });
 
 describe("winCounts", () => {
-  it("menghitung kemenangan sesi per peserta", () => {
+  it("menghitung juara sesi final per peserta", () => {
     expect(
       winCounts([
         {
@@ -65,6 +65,7 @@ describe("winCounts", () => {
           bracket: {
             rounds: [
               {
+                name: "Final",
                 matches: [
                   {
                     teams: [{ number: 1, name: "Tim 1" }, { number: 2, name: "Tim 2" }],
@@ -73,10 +74,47 @@ describe("winCounts", () => {
                 ],
               },
             ],
+            champion: { number: 1, name: "Tim 1" },
           },
         },
       ]),
     ).toEqual([{ nama: "Andi", cabang: "Jakarta", wins: 1 }]);
+  });
+
+  it("tidak menghitung pemenang babak sebelum final", () => {
+    expect(
+      winCounts([
+        {
+          members: [
+            { team_number: 1, nama: "Andi", cabang: "Jakarta" },
+            { team_number: 2, nama: "Budi", cabang: "Bandung" },
+          ],
+          bracket: {
+            rounds: [
+              {
+                name: "Semifinal",
+                matches: [
+                  {
+                    teams: [{ number: 1, name: "Tim 1" }, { number: 2, name: "Tim 2" }],
+                    winnerNumber: 1,
+                  },
+                ],
+              },
+              {
+                name: "Final",
+                matches: [
+                  {
+                    teams: [{ number: 1, name: "Tim 1" }, { number: 2, name: "Tim 2" }],
+                    winnerNumber: 2,
+                  },
+                ],
+              },
+            ],
+            champion: { number: 2, name: "Tim 2" },
+          },
+        },
+      ]),
+    ).toEqual([{ nama: "Budi", cabang: "Bandung", wins: 1 }]);
   });
 });
 
@@ -98,9 +136,11 @@ describe("participantLeaderboard", () => {
             bracket: {
               rounds: [
                 {
+                  name: "Final",
                   matches: [{ teams: [{ number: 1, name: "Tim 1" }], winnerNumber: 1 }],
                 },
               ],
+              champion: { number: 1, name: "Tim 1" },
             },
           },
         ],

@@ -1,4 +1,4 @@
-import { parseBracket } from "./bracket.js";
+import { championOf, parseBracket } from "./bracket.js";
 import { participantKey } from "./csv.js";
 
 export function bracketProgress(bracket) {
@@ -49,19 +49,16 @@ export function winCounts(drawSnapshots) {
       teamsByNumber.get(teamNumber).push(member);
     }
 
-    const bracket = parseBracket(draw.bracket);
-    for (const round of bracket?.rounds || []) {
-      for (const match of round.matches || []) {
-        if (!match.winnerNumber) continue;
-        for (const member of teamsByNumber.get(Number(match.winnerNumber)) || []) {
-          const nama = String(member.nama || "").trim();
-          if (!nama) continue;
-          const cabang = String(member.cabang || "-").trim() || "-";
-          const key = participantKey(nama, cabang);
-          if (!map.has(key)) map.set(key, { nama, cabang, wins: 0 });
-          map.get(key).wins += 1;
-        }
-      }
+    const champion = championOf(parseBracket(draw.bracket));
+    if (!champion?.number) continue;
+
+    for (const member of teamsByNumber.get(Number(champion.number)) || []) {
+      const nama = String(member.nama || "").trim();
+      if (!nama) continue;
+      const cabang = String(member.cabang || "-").trim() || "-";
+      const key = participantKey(nama, cabang);
+      if (!map.has(key)) map.set(key, { nama, cabang, wins: 0 });
+      map.get(key).wins += 1;
     }
   }
   return [...map.values()].sort(

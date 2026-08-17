@@ -327,14 +327,14 @@ function renderParticipantChart(people) {
         <span class="chart-rank">${index + 1}</span>
         <div>
           <strong>${escapeHtml(formatParticipantLabel(person.nama, person.cabang))}</strong>
-          <small>${person.games || 0} permainan · ${person.wins || 0} menang</small>
+          <small>${person.games || 0} permainan · ${person.wins || 0} juara</small>
         </div>
       </div>
       <div class="chart-track chart-track-dual">
         <div class="chart-bar is-games" style="width:${chartWidth(person.games, maxGames)}%" title="${person.games || 0} permainan">
           <span>${person.games || 0}</span>
         </div>
-        <div class="chart-bar is-wins" style="width:${chartWidth(person.wins, maxWins)}%" title="${person.wins || 0} menang">
+        <div class="chart-bar is-wins" style="width:${chartWidth(person.wins, maxWins)}%" title="${person.wins || 0} juara final">
           <span>${person.wins || 0}</span>
         </div>
       </div>
