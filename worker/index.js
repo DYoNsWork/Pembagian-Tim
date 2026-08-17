@@ -1,5 +1,5 @@
 import { divideTeams, eligibleParticipants, normalizeGenderMode } from "../src/teams.js";
-import { chunk, extraDrawIds, groupDrawMembers, normalizeParticipant, normalizeTeamComposition, personFromRow } from "../src/draws.js";
+import { chunk, extraDrawIds, groupDrawMembers, normalizeParticipant, normalizeTeamComposition, personFromRow, playedParticipantKeys } from "../src/draws.js";
 import { gameProgressRows, participantLeaderboard } from "../src/dashboard.js";
 import { findDuplicateParticipantKeys, formatParticipantLabel, participantKey } from "../src/csv.js";
 import {
@@ -465,12 +465,14 @@ async function createDraw(env, body, user) {
   }
   let result;
   try {
+    const playedKeys = await listPlayedKeysForOtherGames(env, game.id);
     result = divideTeams(stored.participants, {
       teamCount,
       membersPerTeam,
       gameName: game.name,
       genderMode,
       picIds,
+      playedKeys,
     });
   } catch (error) {
     throw Object.assign(error, { status: 400 });
@@ -596,6 +598,18 @@ async function getDraw(env, id) {
     needed: draw.team_count * draw.members_per_team,
     ...grouped,
   };
+}
+
+async function listPlayedKeysForOtherGames(env, excludeGameId) {
+  const { results } = await env.DB.prepare(
+    `SELECT DISTINCT dm.nama, dm.cabang, dm.team_number
+     FROM draw_members dm
+     INNER JOIN draws d ON d.id = dm.draw_id
+     WHERE dm.team_number > 0 AND d.game_id != ?`,
+  )
+    .bind(excludeGameId || "")
+    .all();
+  return playedParticipantKeys(results);
 }
 
 async function updateDrawTeams(env, id, body) {

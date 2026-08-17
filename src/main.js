@@ -257,10 +257,13 @@ function renderDrawInfo(game, existingDraw) {
       <div><dt>Peserta siap</dt><dd class="${enough ? "" : "is-warn"}">${pool.length} / ${needed}</dd></div>
       <div><dt>PIC</dt><dd>${escapeHtml(pic1 || "—")}<br />${escapeHtml(pic2 || "—")}</dd></div>
     </dl>`;
+  const hasOtherDraws = draws.some((draw) => draw.gameId && draw.gameId !== game.id);
   drawPoolHint.textContent = enough
     ? drawDone
       ? "Hasil undian dan bagan gugur tampil di bawah."
-      : "Parameter dari menu Permainan. Klik Acak grup untuk memulai."
+      : hasOtherDraws
+        ? "Parameter dari menu Permainan. Peserta yang belum pernah main di permainan lain diprioritaskan saat acak."
+        : "Parameter dari menu Permainan. Klik Acak grup untuk memulai."
     : `Peserta tidak cukup (${pool.length}/${needed} setelah PIC & exclude).`;
   drawPoolHint.classList.toggle("is-warn", !enough);
 }
@@ -1383,6 +1386,7 @@ async function resetDrawDivision() {
   try {
     await api(`/api/draws/${existing.id}`, { method: "DELETE" });
     lastResult = null;
+    closeTeamEditor();
     hide(resultPanel);
     show(resultEmpty);
     tourneyBoard.innerHTML = "";

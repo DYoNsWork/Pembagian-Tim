@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { chunk, extraDrawIds, groupDrawMembers, memberIdFromPerson, normalizeParticipant, normalizeTeamComposition, personFromRow } from "./draws.js";
+import { chunk, extraDrawIds, groupDrawMembers, memberIdFromPerson, normalizeParticipant, normalizeTeamComposition, personFromRow, playedParticipantKeys } from "./draws.js";
+import { participantKey } from "./csv.js";
+
+describe("playedParticipantKeys", () => {
+  it("mengabaikan cadangan dan memakai nama + cabang", () => {
+    const keys = playedParticipantKeys([
+      { team_number: 1, nama: "Putri", cabang: "Botania" },
+      { team_number: 0, nama: "Rina", cabang: "Solo" },
+      { team_number: 2, nama: "Putri", cabang: "Prima" },
+    ]);
+    expect(keys.size).toBe(2);
+    expect(keys.has(participantKey("Putri", "Botania"))).toBe(true);
+    expect(keys.has(participantKey("Putri", "Prima"))).toBe(true);
+  });
+});
 
 describe("normalizeTeamComposition", () => {
   const eligible = new Map([

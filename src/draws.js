@@ -21,6 +21,17 @@ export function normalizeParticipant(input) {
   return { nama, jenisKelamin, cabang, excluded };
 }
 
+export function playedParticipantKeys(rows) {
+  const keys = new Set();
+  for (const row of rows || []) {
+    if (Number(row.team_number) <= 0) continue;
+    const nama = String(row.nama || "").trim();
+    if (!nama) continue;
+    keys.add(participantKey(nama, row.cabang));
+  }
+  return keys;
+}
+
 export function normalizeTeamComposition(teamsInput, { teamCount, membersPerTeam, eligibleById }) {
   const count = Number(teamCount);
   const size = Number(membersPerTeam);
